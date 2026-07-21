@@ -1,10 +1,10 @@
+import * as cp from "node:child_process";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import {
   LanguageClient,
   RevealOutputChannelOn,
   Trace,
-  TransportKind,
   type LanguageClientOptions,
   type ServerOptions
 } from "vscode-languageclient/node";
@@ -20,19 +20,23 @@ export interface ClientFactoryInput {
 export function createLanguageClient(input: ClientFactoryInput): LanguageClient {
   const rootName = path.basename(input.root.fsPath);
 
-  const serverOptions: ServerOptions = {
-    run: {
-      command: input.executable,
-      args: ["lsp", "serve"],
-      options: { cwd: input.root.fsPath, shell: false },
-      transport: TransportKind.stdio
-    },
-    debug: {
-      command: input.executable,
-      args: ["lsp", "serve", "--debug"],
-      options: { cwd: input.root.fsPath, shell: false },
-      transport: TransportKind.stdio
-    }
+  const serverOptions: ServerOptions = () => {
+    const child = cp.spawn(input.executable, ["lsp", "serve"], {
+      cwd: input.root.fsPath,
+      shell: false
+    });
+
+    child.stderr.on("data", (chunk: Buffer | string) => {
+      const text = chunk.toString("utf8").trim();
+      if (text) {
+        input.output.write("warn", "BufBear LSP", text, input.root.fsPath);
+      }
+    });
+
+    return Promise.resolve({
+      writer: child.stdin,
+      reader: child.stdout
+    });
   };
 
   const clientOptions: LanguageClientOptions = {
