@@ -1,3 +1,5 @@
+## 1.0.0 (2026-07-21)
+
 # Changelog
 
 All notable changes to the **BufBear** extension will be documented in this file.
