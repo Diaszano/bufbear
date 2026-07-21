@@ -9,4 +9,5 @@ export interface BufBearConfig {
   readonly goGenRoot: string;
   readonly goSourceRelative: boolean;
   readonly conflictWarningEnabled: boolean;
+  readonly formattingEnabled: boolean;
 }

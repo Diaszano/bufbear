@@ -88,7 +88,8 @@ describe("GeneratedGoImplementationProvider", () => {
         goEnabled: false,
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
-        conflictWarningEnabled: true
+        conflictWarningEnabled: true,
+        formattingEnabled: true
       })
     });
 
@@ -173,7 +174,8 @@ describe("GeneratedGoImplementationProvider", () => {
         goEnabled: true,
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
-        conflictWarningEnabled: true
+        conflictWarningEnabled: true,
+        formattingEnabled: true
       }),
       findDeclarationAt: (): ProtoDeclaration => ({
         kind: "message",

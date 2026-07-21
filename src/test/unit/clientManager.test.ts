@@ -66,6 +66,7 @@ function createDefaultConfig(overrides: Partial<BufBearConfig> = {}): BufBearCon
     goGenRoot: "gen/proto-go",
     goSourceRelative: true,
     conflictWarningEnabled: true,
+    formattingEnabled: true,
     ...overrides
   };
 }

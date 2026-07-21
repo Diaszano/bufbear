@@ -158,7 +158,8 @@ describe("Commands", () => {
       goEnabled: true,
       goGenRoot: "gen/proto-go",
       goSourceRelative: true,
-      conflictWarningEnabled: true
+      conflictWarningEnabled: true,
+      formattingEnabled: true
     });
 
     const disposable = registerCommands({
