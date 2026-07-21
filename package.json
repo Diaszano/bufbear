@@ -4,6 +4,7 @@
   "description": "Advanced Protocol Buffers support for VS Code, powered by Buf.",
   "version": "0.1.0",
   "publisher": "diaszano",
+  "icon": "resources/bufbear.png",
   "license": "MIT",
   "homepage": "https://github.com/Diaszano/bufbear#readme",
   "repository": {
