@@ -1,8 +1,30 @@
-import * as vscode from "vscode";
+import type * as vscode from "vscode";
 import type { BufBearConfig, TraceServer } from "./types.js";
 
+function getVscode(): typeof vscode | undefined {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require("vscode") as typeof vscode;
+  } catch {
+    return undefined;
+  }
+}
+
 export function readConfig(resource?: vscode.Uri): BufBearConfig {
-  const config = vscode.workspace.getConfiguration("bufBear", resource);
+  const vsc = getVscode();
+  if (!vsc) {
+    return {
+      lspEnabled: true,
+      bufPath: "buf",
+      traceServer: "off",
+      missingBufNotification: true,
+      goEnabled: true,
+      goGenRoot: "gen/proto-go",
+      goSourceRelative: true,
+      conflictWarningEnabled: true
+    };
+  }
+  const config = vsc.workspace.getConfiguration("bufBear", resource);
   return {
     lspEnabled: config.get<boolean>("lsp.enabled", true),
     bufPath: config.get<string>("buf.path", "buf"),

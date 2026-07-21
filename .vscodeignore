@@ -1,5 +1,7 @@
 .github/**
 .vscode/**
+.superpowers/**
+.gemini/**
 src/**
 out/**
 node_modules/**
@@ -8,3 +10,4 @@ esbuild.mjs
 tsconfig.json
 **/*.map
 **/*.test.*
+*.vsix
