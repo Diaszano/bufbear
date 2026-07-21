@@ -1,5 +1,9 @@
 # BufBear
 
+<p align="center">
+  <img src="resources/bufbear.png" width="128" alt="BufBear Logo" />
+</p>
+
 **BufBear** is a high-performance VS Code extension for Protocol Buffers (Protobuf), powered by [Buf](https://buf.build). It delivers seamless semantic IDE features via the official Buf Language Server and instant **Go to Implementation** navigation into source-relative generated Go code.
 
 ---
