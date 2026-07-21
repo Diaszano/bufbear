@@ -14,7 +14,7 @@ export interface ClientFactoryInput {
   root: vscode.Uri;
   executable: string;
   trace: "off" | "messages" | "verbose";
-  output: Output;
+  output: Pick<Output, "write" | "show" | "dispose">;
 }
 
 export function createLanguageClient(input: ClientFactoryInput): LanguageClient {
