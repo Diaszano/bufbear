@@ -10,11 +10,77 @@ import { checkConflicts } from "./ui/conflictDetector.js";
 import { GoNavigationService } from "./navigation/go/navigationService.js";
 import { GeneratedGoImplementationProvider } from "./navigation/go/implementationProvider.js";
 
+import { readConfig } from "./config/config.js";
+
 let shutdown: (() => Promise<void>) | undefined;
+
+function registerGoWatchers(context: vscode.ExtensionContext, navigation: GoNavigationService): void {
+  const disposables: vscode.Disposable[] = [];
+
+  const updateWatchers = () => {
+    while (disposables.length > 0) {
+      disposables.pop()?.dispose();
+    }
+
+    const folders = vscode.workspace.workspaceFolders ?? [];
+    for (const folder of folders) {
+      const config = readConfig(folder.uri);
+      if (!config.goEnabled) {
+        continue;
+      }
+
+      const rawGenRoot = config.goGenRoot.trim();
+      let normalizedGenRoot = rawGenRoot.replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+$/, "");
+      if (normalizedGenRoot === ".") {
+        normalizedGenRoot = "";
+      }
+
+      const escapedGenRoot = normalizedGenRoot.replace(/[*?[\]{}]/g, "\\$&");
+      const globPattern = escapedGenRoot
+        ? `${escapedGenRoot}/**/*.{pb.go,grpc.pb.go}`
+        : `**/*.{pb.go,grpc.pb.go}`;
+
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folder, globPattern)
+      );
+
+      const invalidate = (uri: vscode.Uri) => {
+        navigation.invalidate(uri.fsPath);
+      };
+
+      watcher.onDidCreate(invalidate);
+      watcher.onDidChange(invalidate);
+      watcher.onDidDelete(invalidate);
+
+      disposables.push(watcher);
+    }
+  };
+
+  updateWatchers();
+
+  const folderSub = vscode.workspace.onDidChangeWorkspaceFolders(updateWatchers);
+  const configSub = vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration("bufBear")) {
+      updateWatchers();
+    }
+  });
+
+  context.subscriptions.push(
+    new vscode.Disposable(() => {
+      folderSub.dispose();
+      configSub.dispose();
+      while (disposables.length > 0) {
+        disposables.pop()?.dispose();
+      }
+    })
+  );
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   const output = new Output();
   const navigation = new GoNavigationService();
+
+  registerGoWatchers(context, navigation);
 
   const manager = new DefaultClientManager({
     output,

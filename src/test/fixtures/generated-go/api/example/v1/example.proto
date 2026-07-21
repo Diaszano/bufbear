@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package example.v1;
+
+message Book {
+  string id = 1;
+}
+
+enum BookState {
+  BOOK_STATE_UNSPECIFIED = 0;
+}
+
+service BookService {
+  rpc CreateBook(CreateBookRequest) returns (CreateBookResponse);
+}
+
+message CreateBookRequest {}
+message CreateBookResponse {}
