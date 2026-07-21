@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "out/**", "node_modules/**", "*.mjs"]
+    ignores: ["dist/**", "out/**", "node_modules/**", "*.mjs", ".vscode-test/**", ".superpowers/**", ".gemini/**"]
   },
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

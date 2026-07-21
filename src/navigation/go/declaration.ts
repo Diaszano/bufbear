@@ -75,12 +75,12 @@ const TOP_LEVEL = /^\s*(message|enum|service)\s+([A-Za-z_][A-Za-z0-9_]*)\b/u;
 const RPC = /^\s*rpc\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/u;
 
 function getCurrentService(
-  scopeStack: Array<{ kind: "service" | "other"; serviceName?: string }>,
+  scopeStack: { kind: "service" | "other"; serviceName?: string }[],
   pendingService?: string
 ): string | undefined {
   for (let s = scopeStack.length - 1; s >= 0; s--) {
     const item = scopeStack[s];
-    if (item && item.kind === "service") {
+    if (item?.kind === "service") {
       return item.serviceName;
     }
   }
@@ -103,7 +103,7 @@ export function findDeclarationAt(
     return undefined;
   }
 
-  const scopeStack: Array<{ kind: "service" | "other"; serviceName?: string }> = [];
+  const scopeStack: { kind: "service" | "other"; serviceName?: string }[] = [];
   let pendingService: string | undefined;
   let targetDeclaration: ProtoDeclaration | undefined;
 
@@ -163,8 +163,7 @@ export function findDeclarationAt(
       }
     }
 
-    for (let c = 0; c < lineText.length; c++) {
-      const ch = lineText[c];
+    for (const ch of lineText) {
       if (ch === "{") {
         if (pendingService) {
           scopeStack.push({ kind: "service", serviceName: pendingService });
