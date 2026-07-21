@@ -16,12 +16,54 @@ export interface GoTarget {
   readonly parentService?: string;
 }
 
-function isWithin(parent: string, candidate: string): boolean {
-  const relative = path.relative(path.resolve(parent), path.resolve(candidate));
+function hasNul(text: string): boolean {
+  return text.includes("\0");
+}
+
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, "/");
+}
+
+export function isWithin(parent: string, candidate: string): boolean {
+  if (hasNul(parent) || hasNul(candidate)) {
+    return false;
+  }
+
+  const parentDrive = /^[a-zA-Z]:/u.exec(parent)?.[0]?.toUpperCase() ?? /^[a-zA-Z]:/u.exec(normalizePath(parent))?.[0]?.toUpperCase();
+  const candidateDrive = /^[a-zA-Z]:/u.exec(candidate)?.[0]?.toUpperCase() ?? /^[a-zA-Z]:/u.exec(normalizePath(candidate))?.[0]?.toUpperCase();
+
+  if (parentDrive || candidateDrive) {
+    if (parentDrive !== candidateDrive) {
+      return false;
+    }
+  }
+
+  const normParent = path.resolve(parent);
+  const normCandidate = path.resolve(candidate);
+
+  const parentDriveResolved = /^[a-zA-Z]:/u.exec(normParent)?.[0]?.toUpperCase();
+  const candidateDriveResolved = /^[a-zA-Z]:/u.exec(normCandidate)?.[0]?.toUpperCase();
+  if (parentDriveResolved || candidateDriveResolved) {
+    if (parentDriveResolved !== candidateDriveResolved) {
+      return false;
+    }
+  }
+
+  const relative = path.relative(normParent, normCandidate);
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 export function mapToGeneratedGo(input: GoMappingInput): GoTarget | undefined {
+  if (
+    hasNul(input.workspaceRoot) ||
+    hasNul(input.moduleRoot) ||
+    hasNul(input.protoFile) ||
+    hasNul(input.generatedRoot) ||
+    hasNul(input.declaration.name)
+  ) {
+    return undefined;
+  }
+
   const workspaceRoot = path.resolve(input.workspaceRoot);
   const moduleRoot = path.resolve(input.moduleRoot);
   const protoFile = path.resolve(input.protoFile);

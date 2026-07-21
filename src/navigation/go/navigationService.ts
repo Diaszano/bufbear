@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import { BoundedCache } from "../../platform/boundedCache.js";
 import type { ProtoDeclaration } from "./declaration.js";
-import { mapToGeneratedGo } from "./fileMapping.js";
+import { isWithin, mapToGeneratedGo } from "./fileMapping.js";
 import { createGoIndex, type GoIndex, type IndexedLocation } from "./goIndex.js";
 
 export const MAX_GENERATED_FILE_BYTES = 5 * 1024 * 1024;
@@ -23,6 +23,7 @@ export interface NavigationResult {
 export interface FileSystem {
   stat(filePath: string): Promise<{ mtimeMs: number; size: number }>;
   readFile(filePath: string): Promise<string>;
+  realpath?(filePath: string): Promise<string>;
 }
 
 export interface GoNavigationServiceOptions {
@@ -35,6 +36,7 @@ interface CachedFile {
   readonly mtimeMs: number;
   readonly size: number;
   readonly content: string;
+  readonly locations: Map<string, IndexedLocation>;
 }
 
 const defaultFileSystem: FileSystem = {
@@ -44,6 +46,9 @@ const defaultFileSystem: FileSystem = {
   },
   async readFile(filePath: string) {
     return fs.readFile(filePath, "utf8");
+  },
+  async realpath(filePath: string) {
+    return fs.realpath(filePath);
   }
 };
 
@@ -84,6 +89,15 @@ export class GoNavigationService {
       return undefined;
     }
 
+    let realWorkspaceRoot = request.workspaceRoot;
+    if (this.#fileSystem.realpath) {
+      try {
+        realWorkspaceRoot = await this.#fileSystem.realpath(request.workspaceRoot);
+      } catch {
+        // Fall back to original workspaceRoot if realpath fails
+      }
+    }
+
     let statResult: { mtimeMs: number; size: number };
     try {
       statResult = await this.#fileSystem.stat(target.filePath);
@@ -92,6 +106,17 @@ export class GoNavigationService {
         return undefined;
       }
       throw err;
+    }
+
+    if (this.#fileSystem.realpath) {
+      try {
+        const realTarget = await this.#fileSystem.realpath(target.filePath);
+        if (!isWithin(realWorkspaceRoot, realTarget)) {
+          return undefined;
+        }
+      } catch {
+        return undefined;
+      }
     }
 
     if (statResult.size > MAX_GENERATED_FILE_BYTES) {
@@ -103,11 +128,21 @@ export class GoNavigationService {
       return undefined;
     }
 
+    const cacheKey = `${target.kind}:${target.symbolName}:${target.parentService ?? ""}`;
     const cached = this.#cache.get(target.filePath);
     let content: string;
+    let locations: Map<string, IndexedLocation>;
 
     if (cached?.mtimeMs === statResult.mtimeMs && cached.size === statResult.size) {
       content = cached.content;
+      locations = cached.locations;
+      const cachedLoc = locations.get(cacheKey);
+      if (cachedLoc) {
+        return {
+          filePath: target.filePath,
+          location: cachedLoc
+        };
+      }
     } else {
       try {
         content = await this.#fileSystem.readFile(target.filePath);
@@ -117,12 +152,7 @@ export class GoNavigationService {
         }
         throw err;
       }
-
-      this.#cache.set(target.filePath, {
-        mtimeMs: statResult.mtimeMs,
-        size: statResult.size,
-        content
-      });
+      locations = new Map<string, IndexedLocation>();
     }
 
     if (request.isCancelled()) {
@@ -130,6 +160,22 @@ export class GoNavigationService {
     }
 
     const location = this.#goIndex.find(content, target, request.isCancelled);
+
+    if (request.isCancelled()) {
+      return undefined;
+    }
+
+    if (location) {
+      locations.set(cacheKey, location);
+    }
+
+    this.#cache.set(target.filePath, {
+      mtimeMs: statResult.mtimeMs,
+      size: statResult.size,
+      content,
+      locations
+    });
+
     if (!location) {
       return undefined;
     }

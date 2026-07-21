@@ -12,63 +12,68 @@ export interface ProtoDeclaration {
 type ScanState = "code" | "line-comment" | "block-comment" | "string";
 
 export function maskComments(text: string): string {
+  const buf = Buffer.from(text, "utf8");
+  const len = buf.length;
   let state: ScanState = "code";
-  let quoteChar = "";
-  const chars = text.split("");
+  let quoteChar = 0;
 
-  for (let i = 0; i < chars.length; i++) {
-    const ch = chars[i];
-    const nextCh = i + 1 < chars.length ? chars[i + 1] : "";
+  for (let i = 0; i < len; i++) {
+    const ch = buf[i];
+    const nextCh = i + 1 < len ? buf[i + 1] : 0;
 
     if (state === "line-comment") {
-      if (ch === "\n") {
+      if (ch === 10) {
         state = "code";
       } else {
-        chars[i] = " ";
+        buf[i] = 32;
       }
     } else if (state === "block-comment") {
-      if (ch === "*" && nextCh === "/") {
+      if (ch === 42 && nextCh === 47) {
         state = "code";
-        chars[i] = " ";
-        if (i + 1 < chars.length) {
-          chars[i + 1] = " ";
+        buf[i] = 32;
+        if (i + 1 < len) {
+          buf[i + 1] = 32;
         }
         i++;
-      } else if (ch !== "\n") {
-        chars[i] = " ";
+      } else if (ch !== 10) {
+        buf[i] = 32;
       }
     } else if (state === "string") {
-      if (ch === "\\") {
-        if (i + 1 < chars.length) {
-          i++;
+      if (quoteChar !== 96 && ch === 92) {
+        buf[i] = 32;
+        if (i + 1 < len && buf[i + 1] !== 10) {
+          buf[i + 1] = 32;
         }
+        i++;
       } else if (ch === quoteChar) {
         state = "code";
-        quoteChar = "";
+        quoteChar = 0;
+      } else if (ch !== 10) {
+        buf[i] = 32;
       }
     } else {
-      if (ch === "/" && nextCh === "/") {
+      if (ch === 47 && nextCh === 47) {
         state = "line-comment";
-        chars[i] = " ";
-        if (i + 1 < chars.length) {
-          chars[i + 1] = " ";
+        buf[i] = 32;
+        if (i + 1 < len) {
+          buf[i + 1] = 32;
         }
         i++;
-      } else if (ch === "/" && nextCh === "*") {
+      } else if (ch === 47 && nextCh === 42) {
         state = "block-comment";
-        chars[i] = " ";
-        if (i + 1 < chars.length) {
-          chars[i + 1] = " ";
+        buf[i] = 32;
+        if (i + 1 < len) {
+          buf[i + 1] = 32;
         }
         i++;
-      } else if (ch === '"' || ch === "'") {
+      } else if (ch === 34 || ch === 39 || ch === 96) {
         state = "string";
         quoteChar = ch;
       }
     }
   }
 
-  return chars.join("");
+  return buf.toString("utf8");
 }
 
 const TOP_LEVEL = /^\s*(message|enum|service)\s+([A-Za-z_][A-Za-z0-9_]*)\b/u;
