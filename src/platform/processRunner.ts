@@ -55,6 +55,7 @@ export function runProcess(request: ProcessRequest): Promise<ProcessResult> {
             child.kill("SIGKILL");
           }
         }, 1000);
+        killTimer.unref();
       }, request.timeoutMs);
     }
 

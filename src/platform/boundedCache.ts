@@ -25,11 +25,11 @@ export class BoundedCache<K, V> {
     this.#values.delete(key);
     this.#values.set(key, value);
     while (this.#values.size > this.maxEntries) {
-      const oldest = this.#values.keys().next().value;
-      if (oldest === undefined) {
+      const first = this.#values.keys().next();
+      if (first.done) {
         break;
       }
-      this.#values.delete(oldest);
+      this.#values.delete(first.value);
     }
   }
 
