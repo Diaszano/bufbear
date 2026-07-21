@@ -261,4 +261,107 @@ describe("ClientManager", () => {
     assert.equal(status.state, "error");
     assert.match(status.detail ?? "", /maximum restart retries exceeded/i);
   });
+
+  it("handles concurrent in-flight document opens under the same root cleanly", async () => {
+    rootMap.set("/workspace/root/a.proto", "/workspace/root");
+    rootMap.set("/workspace/root/b.proto", "/workspace/root");
+
+    const deps = createDeps({
+      probeBuf: async (executable: string) => {
+        probeCalls.push(executable);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return { executable, version: "1.30.0", supportsLsp: true } satisfies BufProbe;
+      }
+    });
+
+    const manager = createClientManager(deps);
+
+    const docA = makeDoc("/workspace/root/a.proto");
+    const docB = makeDoc("/workspace/root/b.proto");
+
+    await Promise.all([
+      manager.ensureForDocument(docA),
+      manager.ensureForDocument(docB)
+    ]);
+
+    assert.equal(createdClients.length, 1);
+    assert.equal(manager.statuses().length, 1);
+    assert.equal(manager.statuses()[0]?.state, "ready");
+  });
+
+  it("stops existing client and returns when untrusted or disabled on restartForResource", async () => {
+    rootMap.set("/workspace/root/a.proto", "/workspace/root");
+    const manager = createClientManager(createDeps());
+
+    await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+    assert.equal(createdClients.length, 1);
+    const client0 = createdClients[0];
+    assert.ok(client0);
+    assert.equal(client0.isStopped, false);
+
+    // Test untrusted
+    isTrustedValue = false;
+    await manager.restartForResource(makeUri("/workspace/root/a.proto"));
+    assert.equal(client0.isStopped, true);
+    assert.equal(manager.statuses().length, 0);
+
+    // Re-enable trust but disable LSP
+    isTrustedValue = true;
+    config = createDefaultConfig({ lspEnabled: false });
+    await manager.restartForResource();
+    assert.equal(createdClients.length, 1);
+  });
+
+  it("awaits in-flight startup and stops client if stopping during startup", async () => {
+    rootMap.set("/workspace/root/a.proto", "/workspace/root");
+
+    const deps = createDeps({
+      probeBuf: async (executable: string) => {
+        probeCalls.push(executable);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return { executable, version: "1.30.0", supportsLsp: true } satisfies BufProbe;
+      }
+    });
+
+    const manager = createClientManager(deps);
+    const startPromise = manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+
+    // Allow ensureForDocument to pass async getConfig and enter probeBuf
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(manager.statuses()[0]?.state, "starting");
+
+    await manager.stopAll();
+    await startPromise;
+
+    assert.equal(manager.statuses().length, 0);
+    for (const client of createdClients) {
+      assert.equal(client.isStopped, true);
+    }
+  });
+
+  it("SimpleEventEmitter handles thisArgs and disposables parameter", () => {
+    const manager = createClientManager(createDeps());
+    const received: string[] = [];
+    const disposables: vscode.Disposable[] = [];
+
+    const context = { tag: "test-context" };
+
+    manager.onDidChangeStatus(
+      function (this: typeof context) {
+        received.push(this.tag);
+      },
+      context,
+      disposables
+    );
+
+    assert.equal(disposables.length, 1);
+
+    // Trigger status emission via ensureForDocument
+    rootMap.set("/workspace/root/a.proto", "/workspace/root");
+    void manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+
+    const disp = disposables[0];
+    assert.ok(disp);
+    disp.dispose();
+  });
 });

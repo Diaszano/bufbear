@@ -33,16 +33,25 @@ export interface ClientManagerDependencies {
 class SimpleEventEmitter<T> {
   private listeners: ((e: T) => void)[] = [];
 
-  public readonly event: vscode.Event<T> = (listener: (e: T) => void): vscode.Disposable => {
-    this.listeners.push(listener);
-    return {
+  public readonly event: vscode.Event<T> = (
+    listener: (e: T) => void,
+    thisArgs?: unknown,
+    disposables?: { dispose(): void }[] | vscode.Disposable[]
+  ): vscode.Disposable => {
+    const boundListener = thisArgs ? (e: T) => listener.call(thisArgs, e) : listener;
+    this.listeners.push(boundListener);
+    const subscription: vscode.Disposable = {
       dispose: () => {
-        const idx = this.listeners.indexOf(listener);
+        const idx = this.listeners.indexOf(boundListener);
         if (idx >= 0) {
           this.listeners.splice(idx, 1);
         }
       }
     };
+    if (Array.isArray(disposables)) {
+      disposables.push(subscription);
+    }
+    return subscription;
   };
 
   public fire(data: T): void {
@@ -59,6 +68,7 @@ class SimpleEventEmitter<T> {
 interface ManagedRootClient {
   readonly root: string;
   readonly rootKey: string;
+  rootUri: vscode.Uri;
   state: ServerState;
   detail?: string | undefined;
   client?: ReturnType<typeof createLanguageClient> | undefined;
@@ -125,51 +135,58 @@ export class DefaultClientManager implements ClientManager {
       if (existing.state === "ready" || existing.state === "degraded") {
         return;
       }
-      if (existing.state === "starting") {
-        const pending = this.#startupPromises.get(rootKey);
-        if (pending) {
-          await pending;
-        }
-        return;
-      }
     }
 
-    const pending = this.#startupPromises.get(rootKey);
-    if (pending) {
-      await pending;
-      return;
-    }
-
-    const promise = this.startRoot(rootKey, root, document.uri, config);
-    this.#startupPromises.set(rootKey, promise);
-    try {
-      await promise;
-    } finally {
-      this.#startupPromises.delete(rootKey);
-    }
+    await this.startRoot(rootKey, root, document.uri, config);
   }
 
   public async restartForResource(resource?: vscode.Uri, reason?: string): Promise<void> {
     this.#deps.output.write("info", "ClientManager", `Restart requested${reason ? `: ${reason}` : ""}`);
+
     if (resource) {
-      const config = await this.getConfig(resource);
       const workspaceFolder = this.getWorkspaceFolder(resource);
       const root = await this.#deps.findRoot(resource.fsPath, workspaceFolder);
       const rootPath = root ?? resource.fsPath;
       const rootKey = normalizeRootKey(rootPath);
 
+      if (!this.#deps.isTrusted()) {
+        this.#deps.output.write("warn", "ClientManager", "Workspace is untrusted; stopping client on restart", rootPath);
+        await this.stopForRoot(rootKey);
+        return;
+      }
+
+      const config = await this.getConfig(resource);
+      if (!config.lspEnabled) {
+        this.#deps.output.write("info", "ClientManager", "LSP disabled in config; stopping client on restart", rootPath);
+        await this.stopForRoot(rootKey);
+        return;
+      }
+
       await this.stopForRoot(rootKey);
       this.#notifiedMissingBuf.delete(rootKey);
       await this.startRoot(rootKey, rootPath, resource, config);
     } else {
-      const existingRoots = Array.from(this.#clients.values()).map((m) => ({ rootKey: m.rootKey, root: m.root }));
+      if (!this.#deps.isTrusted()) {
+        this.#deps.output.write("warn", "ClientManager", "Workspace is untrusted; stopping all clients on restart");
+        await this.stopAll();
+        return;
+      }
+
+      const existingClients = Array.from(this.#clients.values()).map((m) => ({
+        rootKey: m.rootKey,
+        root: m.root,
+        rootUri: m.rootUri
+      }));
+
       await this.stopAll();
       this.#notifiedMissingBuf.clear();
 
-      for (const { rootKey, root } of existingRoots) {
-        const uri = { fsPath: root, scheme: "file" } as vscode.Uri;
-        const config = await this.getConfig(uri);
-        await this.startRoot(rootKey, root, uri, config);
+      for (const { rootKey, root, rootUri } of existingClients) {
+        const config = await this.getConfig(rootUri);
+        if (!config.lspEnabled) {
+          continue;
+        }
+        await this.startRoot(rootKey, root, rootUri, config);
       }
     }
   }
@@ -177,36 +194,45 @@ export class DefaultClientManager implements ClientManager {
   public async stopForRoot(root: string): Promise<void> {
     const rootKey = normalizeRootKey(root);
     const managed = this.#clients.get(rootKey);
-    if (!managed) {
-      return;
+    if (managed) {
+      managed.isStopping = true;
+      if (managed.restartTimer) {
+        clearTimeout(managed.restartTimer);
+        managed.restartTimer = undefined;
+      }
+
+      for (const sub of managed.disposables) {
+        try {
+          sub.dispose();
+        } catch {
+          // ignore errors during disposal
+        }
+      }
+      managed.disposables = [];
     }
 
-    managed.isStopping = true;
-    if (managed.restartTimer) {
-      clearTimeout(managed.restartTimer);
-      managed.restartTimer = undefined;
-    }
-
-    for (const sub of managed.disposables) {
+    const pending = this.#startupPromises.get(rootKey);
+    if (pending) {
       try {
-        sub.dispose();
+        await pending;
       } catch {
-        // ignore errors during disposal
-      }
-    }
-    managed.disposables = [];
-
-    if (managed.client) {
-      try {
-        await managed.client.stop();
-      } catch (err) {
-        this.#deps.output.write("error", "ClientManager", `Error stopping client for root ${managed.root}: ${String(err)}`, managed.root);
+        // ignore errors during startup promise resolution
       }
     }
 
-    managed.state = "stopped";
-    managed.detail = undefined;
-    this.#clients.delete(rootKey);
+    const managedAfter = this.#clients.get(rootKey);
+    if (managedAfter) {
+      if (managedAfter.client) {
+        try {
+          await managedAfter.client.stop();
+        } catch (err) {
+          this.#deps.output.write("error", "ClientManager", `Error stopping client for root ${managedAfter.root}: ${String(err)}`, managedAfter.root);
+        }
+      }
+      managedAfter.state = "stopped";
+      managedAfter.detail = undefined;
+      this.#clients.delete(rootKey);
+    }
     this.emitStatuses();
   }
 
@@ -226,6 +252,11 @@ export class DefaultClientManager implements ClientManager {
         }
       }
       managed.disposables = [];
+    }
+
+    const pendingPromises = Array.from(this.#startupPromises.values());
+    if (pendingPromises.length > 0) {
+      await Promise.allSettled(pendingPromises);
     }
 
     await Promise.all(
@@ -286,82 +317,142 @@ export class DefaultClientManager implements ClientManager {
     this.#statusEmitter.fire(this.statuses());
   }
 
+  private isStopping(managed: ManagedRootClient): boolean {
+    return managed.isStopping;
+  }
+
   private async startRoot(rootKey: string, rootPath: string, resource: vscode.Uri, config: BufBearConfig): Promise<void> {
-    let managed = this.#clients.get(rootKey);
-    if (!managed) {
-      managed = {
-        root: rootPath,
-        rootKey,
-        state: "starting",
-        client: undefined,
-        restartPolicy: new RestartPolicy(),
-        restartTimer: undefined,
-        isStopping: false,
-        disposables: []
-      };
-      this.#clients.set(rootKey, managed);
-    } else {
-      managed.state = "starting";
-      managed.detail = undefined;
-      managed.isStopping = false;
+    const pending = this.#startupPromises.get(rootKey);
+    if (pending) {
+      return pending;
     }
 
-    this.emitStatuses();
-    this.#deps.output.write("info", "ClientManager", `Starting Buf LSP client for root: ${rootPath}`, rootPath);
-
-    let probeResult: Awaited<ReturnType<typeof probeBuf>> | undefined;
-    try {
-      probeResult = await this.#deps.probeBuf(config.bufPath);
-    } catch (err) {
-      this.#deps.output.write("warn", "ClientManager", `Buf probe failed: ${err instanceof Error ? err.message : String(err)}`, rootPath);
-      probeResult = undefined;
-    }
-
-    if (!probeResult?.supportsLsp) {
-      const detail = probeResult ? "Buf CLI does not support LSP" : "Buf CLI probe failed";
-      managed.state = "degraded";
-      managed.detail = detail;
-      this.#deps.output.write("warn", "ClientManager", `Buf probe failed or lacks LSP support: ${detail}`, rootPath);
-      this.emitStatuses();
-
-      if (config.missingBufNotification && !this.#notifiedMissingBuf.has(rootKey)) {
-        this.#notifiedMissingBuf.add(rootKey);
-        await this.notifyMissingBuf("Buf CLI is missing or does not support LSP. Protobuf features will be degraded.");
+    const promise = (async () => {
+      let managed = this.#clients.get(rootKey);
+      if (!managed) {
+        managed = {
+          root: rootPath,
+          rootKey,
+          rootUri: resource,
+          state: "starting",
+          client: undefined,
+          restartPolicy: new RestartPolicy(),
+          restartTimer: undefined,
+          isStopping: false,
+          disposables: []
+        };
+        this.#clients.set(rootKey, managed);
+      } else {
+        managed.rootUri = resource;
+        managed.state = "starting";
+        managed.detail = undefined;
+        managed.isStopping = false;
       }
-      return;
-    }
 
-    try {
-      const client = this.#deps.createClient({
-        root: resource,
-        executable: config.bufPath,
-        trace: config.traceServer,
-        output: this.#deps.output
-      });
+      this.emitStatuses();
+      this.#deps.output.write("info", "ClientManager", `Starting Buf LSP client for root: ${rootPath}`, rootPath);
 
-      managed.client = client;
-      const targetManaged = managed;
-      if (typeof client.onDidChangeState === "function") {
-        const sub = client.onDidChangeState((e) => {
-          if (e.newState === (1 as State) && !targetManaged.isStopping) {
-            void this.handleUnexpectedStop(targetManaged, config);
-          }
+      if (this.isStopping(managed)) {
+        return;
+      }
+
+      let probeResult: Awaited<ReturnType<typeof probeBuf>> | undefined;
+      try {
+        probeResult = await this.#deps.probeBuf(config.bufPath);
+      } catch (err) {
+        this.#deps.output.write("warn", "ClientManager", `Buf probe failed: ${err instanceof Error ? err.message : String(err)}`, rootPath);
+        probeResult = undefined;
+      }
+
+      if (this.isStopping(managed)) {
+        return;
+      }
+
+      if (!probeResult?.supportsLsp) {
+        const detail = probeResult ? "Buf CLI does not support LSP" : "Buf CLI probe failed";
+        managed.state = "degraded";
+        managed.detail = detail;
+        this.#deps.output.write("warn", "ClientManager", `Buf probe failed or lacks LSP support: ${detail}`, rootPath);
+        this.emitStatuses();
+
+        if (config.missingBufNotification && !this.#notifiedMissingBuf.has(rootKey)) {
+          this.#notifiedMissingBuf.add(rootKey);
+          await this.notifyMissingBuf("Buf CLI is missing or does not support LSP. Protobuf features will be degraded.");
+        }
+        return;
+      }
+
+      try {
+        const client = this.#deps.createClient({
+          root: resource,
+          executable: config.bufPath,
+          trace: config.traceServer,
+          output: this.#deps.output
         });
-        managed.disposables.push(sub);
-      }
 
-      await client.start();
-      managed.state = "ready";
-      managed.detail = undefined;
-      managed.restartPolicy.reset();
-      this.#deps.output.write("info", "ClientManager", `Language client started for root: ${rootPath}`, rootPath);
-      this.emitStatuses();
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      managed.state = "error";
-      managed.detail = errorMsg;
-      this.#deps.output.write("error", "ClientManager", `Failed to start language client: ${errorMsg}`, rootPath);
-      this.emitStatuses();
+        managed.client = client;
+        const targetManaged = managed;
+        if (typeof client.onDidChangeState === "function") {
+          const sub = client.onDidChangeState((e) => {
+            if (e.newState === (1 as State) && !this.isStopping(targetManaged)) {
+              void this.handleUnexpectedStop(targetManaged, config);
+            }
+          });
+          managed.disposables.push(sub);
+        }
+
+        if (this.isStopping(managed)) {
+          try {
+            await client.stop();
+          } catch {
+            // ignore
+          }
+          managed.client = undefined;
+          return;
+        }
+
+        await client.start();
+
+        if (this.isStopping(managed)) {
+          try {
+            await client.stop();
+          } catch {
+            // ignore
+          }
+          managed.client = undefined;
+          return;
+        }
+
+        managed.state = "ready";
+        managed.detail = undefined;
+        managed.restartPolicy.reset();
+        this.#deps.output.write("info", "ClientManager", `Language client started for root: ${rootPath}`, rootPath);
+        this.emitStatuses();
+      } catch (err) {
+        if (this.isStopping(managed)) {
+          if (managed.client) {
+            try {
+              await managed.client.stop();
+            } catch {
+              // ignore
+            }
+            managed.client = undefined;
+          }
+          return;
+        }
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        managed.state = "error";
+        managed.detail = errorMsg;
+        this.#deps.output.write("error", "ClientManager", `Failed to start language client: ${errorMsg}`, rootPath);
+        this.emitStatuses();
+      }
+    })();
+
+    this.#startupPromises.set(rootKey, promise);
+    try {
+      await promise;
+    } finally {
+      this.#startupPromises.delete(rootKey);
     }
   }
 
@@ -390,12 +481,12 @@ export class DefaultClientManager implements ClientManager {
 
     if (delay === 0) {
       managed.restartTimer = undefined;
-      await this.startRoot(managed.rootKey, managed.root, { fsPath: managed.root, scheme: "file" } as vscode.Uri, config);
+      await this.startRoot(managed.rootKey, managed.root, managed.rootUri, config);
     } else {
       managed.restartTimer = setTimeout(async () => {
         managed.restartTimer = undefined;
         if (!managed.isStopping) {
-          await this.startRoot(managed.rootKey, managed.root, { fsPath: managed.root, scheme: "file" } as vscode.Uri, config);
+          await this.startRoot(managed.rootKey, managed.root, managed.rootUri, config);
         }
       }, delay);
     }
