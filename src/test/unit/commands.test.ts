@@ -6,6 +6,23 @@ import type { RootServerStatus } from "../../lsp/serverState.js";
 import type { BufBearConfig } from "../../config/types.js";
 import type { BufProbe } from "../../lsp/bufExecutable.js";
 
+class TestPosition {
+  public constructor(public line: number, public character: number) {}
+}
+
+class TestRange {
+  public constructor(public start: TestPosition, public end: TestPosition) {}
+}
+
+const stubVscode = {
+  Range: TestRange as unknown as typeof vscode.Range,
+  Position: TestPosition as unknown as typeof vscode.Position,
+  workspace: {
+    isTrusted: true,
+    getWorkspaceFolder: () => undefined
+  }
+} as unknown as typeof vscode;
+
 class FakeOutput {
   public logs: { level: string; component: string; message: string; root?: string | undefined }[] = [];
   public isShown = false;
@@ -423,7 +440,8 @@ describe("Commands", () => {
         conflictWarningEnabled: true,
         formattingEnabled: true
       }),
-      formatProtoText: async () => Promise.resolve({ success: true as const, formattedText: "syntax = \"proto3\";\n" })
+      formatProtoText: async () => Promise.resolve({ success: true as const, formattedText: "syntax = \"proto3\";\n" }),
+      vscode: stubVscode
     });
 
     const handler = registered.get("bufBear.formatDocument");

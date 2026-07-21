@@ -3,6 +3,31 @@ import type * as vscode from "vscode";
 import type { BufBearConfig } from "../../config/types.js";
 import { BufFormattingProvider, type FormattingProviderDependencies } from "../../formatting/formatProvider.js";
 
+class TestPosition {
+  public constructor(public line: number, public character: number) {}
+}
+
+class TestRange {
+  public constructor(public start: TestPosition, public end: TestPosition) {}
+}
+
+class TestTextEdit {
+  public constructor(public range: TestRange, public newText: string) {}
+  public static replace(range: TestRange, newText: string): TestTextEdit {
+    return new TestTextEdit(range, newText);
+  }
+}
+
+const stubVscode = {
+  Range: TestRange as unknown as typeof vscode.Range,
+  Position: TestPosition as unknown as typeof vscode.Position,
+  TextEdit: TestTextEdit as unknown as typeof vscode.TextEdit,
+  workspace: {
+    isTrusted: true,
+    getWorkspaceFolder: () => undefined
+  }
+} as unknown as typeof vscode;
+
 function createMockConfig(overrides: Partial<BufBearConfig> = {}): BufBearConfig {
   return {
     lspEnabled: true,
@@ -36,7 +61,8 @@ describe("BufFormattingProvider", () => {
       formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
       readConfig: () => createMockConfig(),
       isTrusted: () => true,
-      writeLog: noopLog
+      writeLog: noopLog,
+      vscode: stubVscode
     };
 
     const provider = new BufFormattingProvider(deps);
@@ -47,7 +73,7 @@ describe("BufFormattingProvider", () => {
     assert.equal(edits[0]?.newText, 'syntax = "proto3";\n');
   });
 
-  it("returns TextEdit on range formatting edits", async () => {
+  it("returns empty edits on range formatting request", async () => {
     const document = {
       uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
       getText: () => 'syntax="proto3";',
@@ -60,15 +86,15 @@ describe("BufFormattingProvider", () => {
       formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
       readConfig: () => createMockConfig(),
       isTrusted: () => true,
-      writeLog: noopLog
+      writeLog: noopLog,
+      vscode: stubVscode
     };
 
     const provider = new BufFormattingProvider(deps);
     const edits = await provider.provideDocumentRangeFormattingEdits(document);
 
     assert.ok(edits);
-    assert.equal(edits.length, 1);
-    assert.equal(edits[0]?.newText, 'syntax = "proto3";\n');
+    assert.equal(edits.length, 0);
   });
 
   it("returns empty edits silently when formatting is disabled in config", async () => {
@@ -82,7 +108,8 @@ describe("BufFormattingProvider", () => {
       formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
       readConfig: () => createMockConfig({ formattingEnabled: false }),
       isTrusted: () => true,
-      writeLog: noopLog
+      writeLog: noopLog,
+      vscode: stubVscode
     };
 
     const provider = new BufFormattingProvider(deps);
@@ -102,7 +129,8 @@ describe("BufFormattingProvider", () => {
       formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
       readConfig: () => createMockConfig(),
       isTrusted: () => false,
-      writeLog: noopLog
+      writeLog: noopLog,
+      vscode: stubVscode
     };
 
     const provider = new BufFormattingProvider(deps);
@@ -122,7 +150,8 @@ describe("BufFormattingProvider", () => {
       formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
       readConfig: () => createMockConfig(),
       isTrusted: () => true,
-      writeLog: noopLog
+      writeLog: noopLog,
+      vscode: stubVscode
     };
 
     const provider = new BufFormattingProvider(deps);
@@ -145,7 +174,8 @@ describe("BufFormattingProvider", () => {
       isTrusted: () => true,
       writeLog: (level: "info" | "warn" | "error", component: string, message: string, root?: string) => {
         logs.push({ level, component, message, root });
-      }
+      },
+      vscode: stubVscode
     };
 
     const provider = new BufFormattingProvider(deps);
@@ -173,7 +203,8 @@ describe("BufFormattingProvider", () => {
       formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
       readConfig: () => createMockConfig(),
       isTrusted: () => true,
-      writeLog: noopLog
+      writeLog: noopLog,
+      vscode: stubVscode
     };
 
     const provider = new BufFormattingProvider(deps);

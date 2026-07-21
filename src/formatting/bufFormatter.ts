@@ -23,6 +23,10 @@ export async function formatProtoText(input: FormatInput): Promise<FormatResult>
       timeoutMs
     });
 
+    if (res.timedOut) {
+      return { success: false, error: `Formatting timed out after ${String(timeoutMs)}ms` };
+    }
+
     if (res.exitCode !== 0) {
       const errorMsg = res.stderr.trim() || `buf format exited with code ${String(res.exitCode)}`;
       return { success: false, error: errorMsg };

@@ -72,4 +72,28 @@ describe("bufFormatter", () => {
     }
     assert.equal(result.error, "buf executable not found");
   });
+
+  it("returns clear timeout error message when process times out", async () => {
+    const fakeRunProcess = () =>
+      Promise.resolve({
+        exitCode: null,
+        stdout: "",
+        stderr: "",
+        timedOut: true
+      });
+
+    const input: FormatInput = {
+      text: "syntax = \"proto3\";",
+      bufPath: "buf",
+      cwd: "/workspace/root",
+      timeoutMs: 3000,
+      runProcess: fakeRunProcess
+    };
+
+    const result = await formatProtoText(input);
+    if (result.success) {
+      assert.fail("expected formatProtoText to fail");
+    }
+    assert.equal(result.error, "Formatting timed out after 3000ms");
+  });
 });

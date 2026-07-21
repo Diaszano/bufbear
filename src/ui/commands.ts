@@ -47,10 +47,11 @@ export interface CommandDependencies {
     options?: vscode.TextDocumentShowOptions
   ) => Promise<vscode.TextEditor>;
   readonly formatProtoText?: typeof formatProtoText;
+  readonly vscode?: typeof vscode;
 }
 
 export function registerCommands(dependencies: CommandDependencies): vscode.Disposable {
-  const vsc = getVscode();
+  const vsc = dependencies.vscode ?? getVscode();
 
   const regCmd =
     dependencies.registerCommand ??
@@ -326,29 +327,11 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       const lastLineIndex = Math.max(0, editor.document.lineCount - 1);
       const lastLine = editor.document.lineAt(lastLineIndex);
 
-      const RangeClass =
-        vsc?.Range ??
-        (class {
-          public start: vscode.Position;
-          public end: vscode.Position;
-          public constructor(start: vscode.Position, end: vscode.Position) {
-            this.start = start;
-            this.end = end;
-          }
-        } as unknown as typeof vscode.Range);
+      if (!vsc) {
+        return;
+      }
 
-      const PositionClass =
-        vsc?.Position ??
-        (class {
-          public line: number;
-          public character: number;
-          public constructor(line: number, character: number) {
-            this.line = line;
-            this.character = character;
-          }
-        } as unknown as typeof vscode.Position);
-
-      const fullRange = new RangeClass(new PositionClass(0, 0), lastLine.range.end);
+      const fullRange = new vsc.Range(new vsc.Position(0, 0), lastLine.range.end);
       await editor.edit((builder) => builder.replace(fullRange, result.formattedText));
     })
   );

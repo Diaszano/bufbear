@@ -20,6 +20,7 @@ export interface FormattingProviderDependencies {
   isTrusted?: () => boolean;
   getWorkspaceFolder?: (uri: vscode.Uri) => string | undefined;
   writeLog?: (level: "info" | "warn" | "error", component: string, message: string, root?: string) => void;
+  vscode?: typeof vscode;
 }
 
 export class BufFormattingProvider
@@ -37,10 +38,10 @@ export class BufFormattingProvider
     return this.formatDocument(document);
   }
 
-  public async provideDocumentRangeFormattingEdits(
-    document: vscode.TextDocument
+  public provideDocumentRangeFormattingEdits(
+    _document: vscode.TextDocument
   ): Promise<vscode.TextEdit[]> {
-    return this.formatDocument(document);
+    return Promise.resolve([]);
   }
 
   private async formatDocument(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
@@ -48,8 +49,12 @@ export class BufFormattingProvider
       return [];
     }
 
-    const vsc = getVscode();
-    const isTrusted = this.#deps.isTrusted ? this.#deps.isTrusted() : (vsc?.workspace.isTrusted ?? true);
+    const vsc = this.#deps.vscode ?? getVscode();
+    if (!vsc) {
+      return [];
+    }
+
+    const isTrusted = this.#deps.isTrusted ? this.#deps.isTrusted() : vsc.workspace.isTrusted;
     if (!isTrusted) {
       return [];
     }
@@ -84,46 +89,16 @@ export class BufFormattingProvider
 
     const lastLineIndex = Math.max(0, document.lineCount - 1);
     const lastLine = document.lineAt(lastLineIndex);
+    const fullRange = new vsc.Range(new vsc.Position(0, 0), lastLine.range.end);
 
-    const RangeClass =
-      vsc?.Range ??
-      (class {
-        public start: vscode.Position;
-        public end: vscode.Position;
-        public constructor(start: vscode.Position, end: vscode.Position) {
-          this.start = start;
-          this.end = end;
-        }
-      } as unknown as typeof vscode.Range);
-
-    const PositionClass =
-      vsc?.Position ??
-      (class {
-        public line: number;
-        public character: number;
-        public constructor(line: number, character: number) {
-          this.line = line;
-          this.character = character;
-        }
-      } as unknown as typeof vscode.Position);
-
-    const TextEditClass =
-      vsc?.TextEdit ??
-      ({
-        replace: (range: vscode.Range, newText: string) =>
-          ({ range, newText }) as unknown as vscode.TextEdit
-      } as unknown as typeof vscode.TextEdit);
-
-    const fullRange = new RangeClass(new PositionClass(0, 0), lastLine.range.end);
-
-    return [TextEditClass.replace(fullRange, result.formattedText)];
+    return [vsc.TextEdit.replace(fullRange, result.formattedText)];
   }
 
   private getWorkspaceFolder(uri: vscode.Uri): string | undefined {
     if (this.#deps.getWorkspaceFolder) {
       return this.#deps.getWorkspaceFolder(uri);
     }
-    const vsc = getVscode();
+    const vsc = this.#deps.vscode ?? getVscode();
     return vsc?.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
   }
 
