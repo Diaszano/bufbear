@@ -71,31 +71,35 @@ export function runProcess(
     let stdoutBytes = 0;
     const stdoutChunks: Buffer[] = [];
     child.stdout.on("data", (chunk: Buffer) => {
-      if (stdoutBytes < MAX_BUFFER_BYTES) {
-        const remaining = MAX_BUFFER_BYTES - stdoutBytes;
-        if (chunk.length > remaining) {
-          stdoutChunks.push(chunk.subarray(0, remaining));
-          stdoutBytes = MAX_BUFFER_BYTES;
-        } else {
-          stdoutChunks.push(chunk);
-          stdoutBytes += chunk.length;
-        }
+      if (settled) {
+        return;
       }
+      stdoutBytes += chunk.length;
+      if (stdoutBytes > MAX_BUFFER_BYTES) {
+        settled = true;
+        cleanup();
+        child.kill("SIGKILL");
+        reject(new Error("Process output buffer limit exceeded"));
+        return;
+      }
+      stdoutChunks.push(chunk);
     });
 
     let stderrBytes = 0;
     const stderrChunks: Buffer[] = [];
     child.stderr.on("data", (chunk: Buffer) => {
-      if (stderrBytes < MAX_BUFFER_BYTES) {
-        const remaining = MAX_BUFFER_BYTES - stderrBytes;
-        if (chunk.length > remaining) {
-          stderrChunks.push(chunk.subarray(0, remaining));
-          stderrBytes = MAX_BUFFER_BYTES;
-        } else {
-          stderrChunks.push(chunk);
-          stderrBytes += chunk.length;
-        }
+      if (settled) {
+        return;
       }
+      stderrBytes += chunk.length;
+      if (stderrBytes > MAX_BUFFER_BYTES) {
+        settled = true;
+        cleanup();
+        child.kill("SIGKILL");
+        reject(new Error("Process output buffer limit exceeded"));
+        return;
+      }
+      stderrChunks.push(chunk);
     });
 
     child.on("error", (err) => {
