@@ -75,6 +75,7 @@ interface ManagedRootClient {
   readonly restartPolicy: RestartPolicy;
   restartTimer?: NodeJS.Timeout | undefined;
   isStopping: boolean;
+  isStartingClient?: boolean | undefined;
   disposables: { dispose(): void }[];
 }
 
@@ -237,7 +238,10 @@ export class DefaultClientManager implements ClientManager {
         try {
           await managedAfter.client.stop();
         } catch (err) {
-          this.#deps.output.write("error", "ClientManager", `Error stopping client for root ${managedAfter.root}: ${String(err)}`, managedAfter.root);
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!msg.includes("can't be stopped") && !msg.includes("startFailed")) {
+            this.#deps.output.write("error", "ClientManager", `Error stopping client for root ${managedAfter.root}: ${msg}`, managedAfter.root);
+          }
         }
       }
       managedAfter.state = "stopped";
@@ -276,7 +280,10 @@ export class DefaultClientManager implements ClientManager {
           try {
             await managed.client.stop();
           } catch (err) {
-            this.#deps.output.write("error", "ClientManager", `Error stopping client: ${String(err)}`, managed.root);
+            const msg = err instanceof Error ? err.message : String(err);
+            if (!msg.includes("can't be stopped") && !msg.includes("startFailed")) {
+              this.#deps.output.write("error", "ClientManager", `Error stopping client: ${msg}`, managed.root);
+            }
           }
         }
         managed.state = "stopped";
@@ -406,7 +413,7 @@ export class DefaultClientManager implements ClientManager {
         const targetManaged = managed;
         if (typeof client.onDidChangeState === "function") {
           const sub = client.onDidChangeState((e) => {
-            if (e.newState === (1 as State) && !this.isStopping(targetManaged)) {
+            if (e.newState === (1 as State) && !targetManaged.isStartingClient && !this.isStopping(targetManaged)) {
               void this.handleUnexpectedStop(targetManaged, config);
             }
           });
@@ -423,7 +430,12 @@ export class DefaultClientManager implements ClientManager {
           return;
         }
 
-        await client.start();
+        managed.isStartingClient = true;
+        try {
+          await client.start();
+        } finally {
+          managed.isStartingClient = false;
+        }
 
         if (this.isStopping(managed)) {
           try {

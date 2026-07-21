@@ -36,17 +36,7 @@ export function createLanguageClient(input: ClientFactoryInput): LanguageClient 
   };
 
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [
-      {
-        language: "proto3",
-        scheme: "file",
-        pattern: new vscode.RelativePattern(input.root, "**/*.proto") as unknown as { baseUri: string; pattern: string }
-      },
-      {
-        scheme: "file",
-        pattern: new vscode.RelativePattern(input.root, "**/{buf.yaml,buf.gen.yaml,buf.lock}") as unknown as { baseUri: string; pattern: string }
-      }
-    ],
+    documentSelector: [{ language: "proto3", scheme: "file" }],
     workspaceFolder: {
       uri: input.root,
       name: rootName,
@@ -58,7 +48,8 @@ export function createLanguageClient(input: ClientFactoryInput): LanguageClient 
       )
     },
     revealOutputChannelOn: RevealOutputChannelOn.Never,
-    traceOutputChannel: vscode.window.createOutputChannel(`BufBear LSP — ${rootName}`, { log: true })
+    outputChannel: vscode.window.createOutputChannel(`BufBear LSP — ${rootName}`, { log: true }),
+    traceOutputChannel: vscode.window.createOutputChannel(`BufBear LSP Trace — ${rootName}`, { log: true })
   };
 
   const client = new LanguageClient(
