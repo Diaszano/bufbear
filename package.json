@@ -163,7 +163,7 @@
     "test:release": "node scripts/test-release-config.mjs",
     "bundle": "node esbuild.mjs",
     "package": "npm run check-types && node esbuild.mjs --production",
-    "package:vsix": "npm run verify && npm run package && vsce package --out bufbear-0.1.0.vsix",
+    "package:vsix": "npm run verify && npm run package && vsce package",
     "verify": "npm run lint && npm run check-types && npm run test:unit",
     "vscode:prepublish": "npm run package",
     "prepare": "husky"
@@ -193,6 +193,7 @@
     "js-yaml": "^5.2.1",
     "mocha": "^11.7.6",
     "semantic-release": "^25.0.8",
+    "@semantic-release/exec": "^6.0.3",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.65.0"
   }

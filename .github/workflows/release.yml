@@ -31,9 +31,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build VSIX extension package
-        run: npm run package:vsix
-
       - name: Snapshot release tags
         shell: bash
         run: .github/scripts/resolve-release-tag.sh snapshot "$RUNNER_TEMP/release-tags-before.txt"
@@ -54,3 +51,9 @@ jobs:
         id: release
         shell: bash
         run: .github/scripts/resolve-release-tag.sh resolve "$RUNNER_TEMP/release-tags-before.txt" "$GITHUB_OUTPUT"
+
+      - name: Publish to VS Code Marketplace
+        if: steps.release.outputs.published == 'true'
+        run: npx vsce publish --packagePath bufbear-${{ steps.release.outputs.version }}.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
