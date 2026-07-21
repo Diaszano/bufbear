@@ -83,6 +83,17 @@ function normalizeRootKey(rootPath: string): string {
   return process.platform === "win32" ? resolved.toLowerCase() : resolved;
 }
 
+function makeFileUri(filePath: string): vscode.Uri {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const vscodeModule = require("vscode") as typeof vscode;
+    return vscodeModule.Uri.file(filePath);
+  } catch {
+    // ignore outside vscode extension host
+  }
+  return { fsPath: filePath, scheme: "file" } as unknown as vscode.Uri;
+}
+
 export class DefaultClientManager implements ClientManager {
   readonly #deps: ClientManagerDependencies;
   readonly #clients = new Map<string, ManagedRootClient>();
@@ -383,8 +394,9 @@ export class DefaultClientManager implements ClientManager {
       }
 
       try {
+        const rootDirectoryUri = makeFileUri(rootPath);
         const client = this.#deps.createClient({
-          root: resource,
+          root: rootDirectoryUri,
           executable: config.bufPath,
           trace: config.traceServer,
           output: this.#deps.output
