@@ -79,6 +79,7 @@ describe("Commands", () => {
     assert.ok(registered.has("bufBear.checkHealth"));
     assert.ok(registered.has("bufBear.openSettings"));
     assert.ok(registered.has("bufBear.goToGeneratedImplementation"));
+    assert.ok(registered.has("bufBear.formatDocument"));
     assert.ok(registered.has("bufBear.showQuickPick"));
 
     disposable.dispose();
@@ -303,6 +304,134 @@ describe("Commands", () => {
     assert.ok(openedUri);
     assert.strictEqual(openedUri.fsPath, "/workspace/gen/proto-go/user.pb.go");
     assert.ok(shownDoc);
+    disposable.dispose();
+  });
+
+  it("formatDocument shows warning when active editor is not proto3", async () => {
+    const registered = new Map<string, (...args: unknown[]) => unknown>();
+    let warnMsg: string | undefined;
+
+    const disposable = registerCommands({
+      clientManager: new FakeClientManager(),
+      output: new FakeOutput(),
+      registerCommand: (id, handler) => {
+        registered.set(id, handler);
+        return { dispose: () => undefined };
+      },
+      getActiveTextEditor: () =>
+        ({
+          document: { languageId: "typescript", uri: { fsPath: "/workspace/app.ts" } }
+        } as unknown as vscode.TextEditor),
+      showWarningMessage: async (msg) => {
+        warnMsg = msg;
+        return Promise.resolve(undefined);
+      }
+    });
+
+    const handler = registered.get("bufBear.formatDocument");
+    assert.ok(handler);
+    await handler();
+
+    assert.strictEqual(warnMsg, "Active editor is not a Protobuf file.");
+    disposable.dispose();
+  });
+
+  it("formatDocument shows error message when formatProtoText fails", async () => {
+    const registered = new Map<string, (...args: unknown[]) => unknown>();
+    let errorMsg: string | undefined;
+
+    const disposable = registerCommands({
+      clientManager: new FakeClientManager(),
+      output: new FakeOutput(),
+      registerCommand: (id, handler) => {
+        registered.set(id, handler);
+        return { dispose: () => undefined };
+      },
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            uri: { fsPath: "/workspace/api.proto" },
+            getText: () => "syntax = \"proto3\";"
+          }
+        } as unknown as vscode.TextEditor),
+      readConfig: () => ({
+        lspEnabled: true,
+        bufPath: "buf",
+        traceServer: "off",
+        missingBufNotification: true,
+        goEnabled: true,
+        goGenRoot: "gen/proto-go",
+        goSourceRelative: true,
+        conflictWarningEnabled: true,
+        formattingEnabled: true
+      }),
+      formatProtoText: async () => Promise.resolve({ success: false as const, error: "syntax error on line 1" }),
+      showErrorMessage: async (msg) => {
+        errorMsg = msg;
+        return Promise.resolve(undefined);
+      }
+    });
+
+    const handler = registered.get("bufBear.formatDocument");
+    assert.ok(handler);
+    await handler();
+
+    assert.strictEqual(errorMsg, "BufBear Formatting Error: syntax error on line 1");
+    disposable.dispose();
+  });
+
+  it("formatDocument executes editor.edit when formatProtoText returns formatted text", async () => {
+    const registered = new Map<string, (...args: unknown[]) => unknown>();
+    let editCalled = false;
+    let editContent = "";
+
+    const disposable = registerCommands({
+      clientManager: new FakeClientManager(),
+      output: new FakeOutput(),
+      registerCommand: (id, handler) => {
+        registered.set(id, handler);
+        return { dispose: () => undefined };
+      },
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            uri: { fsPath: "/workspace/api.proto" },
+            getText: () => "syntax=\"proto3\";",
+            lineCount: 1,
+            lineAt: () => ({ range: { end: { line: 0, character: 16 } } })
+          },
+          edit: async (callback: (builder: { replace: (range: unknown, text: string) => void }) => void) => {
+            editCalled = true;
+            callback({
+              replace: (_range: unknown, text: string) => {
+                editContent = text;
+              }
+            });
+            return Promise.resolve(true);
+          }
+        } as unknown as vscode.TextEditor),
+      readConfig: () => ({
+        lspEnabled: true,
+        bufPath: "buf",
+        traceServer: "off",
+        missingBufNotification: true,
+        goEnabled: true,
+        goGenRoot: "gen/proto-go",
+        goSourceRelative: true,
+        conflictWarningEnabled: true,
+        formattingEnabled: true
+      }),
+      formatProtoText: async () => Promise.resolve({ success: true as const, formattedText: "syntax = \"proto3\";\n" })
+    });
+
+    const handler = registered.get("bufBear.formatDocument");
+    assert.ok(handler);
+    await handler();
+
+    assert.strictEqual(editCalled, true);
+    assert.strictEqual(editContent, "syntax = \"proto3\";\n");
     disposable.dispose();
   });
 });

@@ -7,6 +7,7 @@ import { findBufRoot } from "../lsp/rootDiscovery.js";
 import { readConfig } from "../config/config.js";
 import { GoNavigationService } from "../navigation/go/navigationService.js";
 import { resolveGoImplementation } from "../navigation/go/implementationProvider.js";
+import { formatProtoText } from "../formatting/bufFormatter.js";
 
 function getVscode(): typeof vscode | undefined {
   try {
@@ -37,12 +38,15 @@ export interface CommandDependencies {
   readonly executeCommand?: (command: string, ...rest: unknown[]) => Promise<unknown>;
   readonly showQuickPick?: (items: readonly QuickPickCommandItem[]) => Promise<QuickPickCommandItem | undefined>;
   readonly showInformationMessage?: (message: string) => Promise<string | undefined>;
+  readonly showWarningMessage?: (message: string) => Promise<string | undefined>;
+  readonly showErrorMessage?: (message: string) => Promise<string | undefined>;
   readonly getActiveTextEditor?: () => vscode.TextEditor | undefined;
   readonly openTextDocument?: (uri: vscode.Uri) => Promise<vscode.TextDocument>;
   readonly showTextDocument?: (
     document: vscode.TextDocument,
     options?: vscode.TextDocumentShowOptions
   ) => Promise<vscode.TextEditor>;
+  readonly formatProtoText?: typeof formatProtoText;
 }
 
 export function registerCommands(dependencies: CommandDependencies): vscode.Disposable {
@@ -278,6 +282,74 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       if (selected?.command) {
         await execCmd(selected.command);
       }
+    })
+  );
+
+  // 7. bufBear.formatDocument
+  disposables.push(
+    regCmd("bufBear.formatDocument", async () => {
+      const showWarn =
+        dependencies.showWarningMessage ??
+        ((msg: string) => vsc?.window.showWarningMessage(msg) ?? Promise.resolve(undefined));
+      const showErr =
+        dependencies.showErrorMessage ??
+        ((msg: string) => vsc?.window.showErrorMessage(msg) ?? Promise.resolve(undefined));
+
+      const editor = getEditor();
+      if (editor?.document.languageId !== "proto3") {
+        await showWarn("Active editor is not a Protobuf file.");
+        return;
+      }
+
+      const config = readCfg(editor.document.uri);
+      const findRootFn = dependencies.findRoot ?? findBufRoot;
+      const workspaceFolder = vsc?.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath;
+      const bufRoot = await findRootFn(editor.document.uri.fsPath, workspaceFolder);
+      const cwd = bufRoot ?? workspaceFolder ?? path.dirname(editor.document.uri.fsPath);
+
+      const formatFn = dependencies.formatProtoText ?? formatProtoText;
+      const result = await formatFn({
+        text: editor.document.getText(),
+        bufPath: config.bufPath,
+        cwd
+      });
+
+      if (!result.success) {
+        await showErr(`BufBear Formatting Error: ${result.error}`);
+        return;
+      }
+
+      if (result.formattedText === editor.document.getText()) {
+        return;
+      }
+
+      const lastLineIndex = Math.max(0, editor.document.lineCount - 1);
+      const lastLine = editor.document.lineAt(lastLineIndex);
+
+      const RangeClass =
+        vsc?.Range ??
+        (class {
+          public start: vscode.Position;
+          public end: vscode.Position;
+          public constructor(start: vscode.Position, end: vscode.Position) {
+            this.start = start;
+            this.end = end;
+          }
+        } as unknown as typeof vscode.Range);
+
+      const PositionClass =
+        vsc?.Position ??
+        (class {
+          public line: number;
+          public character: number;
+          public constructor(line: number, character: number) {
+            this.line = line;
+            this.character = character;
+          }
+        } as unknown as typeof vscode.Position);
+
+      const fullRange = new RangeClass(new PositionClass(0, 0), lastLine.range.end);
+      await editor.edit((builder) => builder.replace(fullRange, result.formattedText));
     })
   );
 

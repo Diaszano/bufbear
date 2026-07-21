@@ -9,6 +9,7 @@ import { registerCommands } from "./ui/commands.js";
 import { checkConflicts } from "./ui/conflictDetector.js";
 import { GoNavigationService } from "./navigation/go/navigationService.js";
 import { GeneratedGoImplementationProvider } from "./navigation/go/implementationProvider.js";
+import { BufFormattingProvider } from "./formatting/formatProvider.js";
 
 import { readConfig } from "./config/config.js";
 
@@ -112,6 +113,15 @@ export function activate(context: vscode.ExtensionContext): void {
       { language: "proto3", scheme: "file" },
       new GeneratedGoImplementationProvider({ navigation, output })
     )
+  );
+
+  const formattingProvider = new BufFormattingProvider({
+    writeLog: (level, component, message, root) => output.write(level, component, message, root)
+  });
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider({ language: "proto3", scheme: "file" }, formattingProvider),
+    vscode.languages.registerDocumentRangeFormattingEditProvider({ language: "proto3", scheme: "file" }, formattingProvider)
   );
 
   context.subscriptions.push(
