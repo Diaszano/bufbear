@@ -1,0 +1,172 @@
+{
+  "name": "bufbear",
+  "displayName": "BufBear",
+  "description": "Advanced Protocol Buffers support for VS Code, powered by Buf.",
+  "version": "0.1.0",
+  "publisher": "diaszano",
+  "license": "MIT",
+  "homepage": "https://github.com/Diaszano/bufbear#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Diaszano/bufbear.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Diaszano/bufbear/issues"
+  },
+  "engines": {
+    "vscode": "^1.125.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "keywords": [
+    "protobuf",
+    "proto3",
+    "buf",
+    "lsp",
+    "grpc"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "activationEvents": [
+    "onLanguage:proto3",
+    "workspaceContains:**/buf.yaml",
+    "onCommand:bufBear.restartServer",
+    "onCommand:bufBear.checkHealth"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "proto3",
+        "extensions": [
+          ".proto"
+        ],
+        "aliases": [
+          "Protocol Buffers",
+          "Protobuf"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "proto3",
+        "scopeName": "source.proto",
+        "path": "./syntaxes/proto3.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "bufBear.restartServer",
+        "title": "BufBear: Restart Language Server"
+      },
+      {
+        "command": "bufBear.showOutput",
+        "title": "BufBear: Show Output"
+      },
+      {
+        "command": "bufBear.checkHealth",
+        "title": "BufBear: Check Health"
+      },
+      {
+        "command": "bufBear.openSettings",
+        "title": "BufBear: Open Settings"
+      },
+      {
+        "command": "bufBear.goToGeneratedImplementation",
+        "title": "BufBear: Go to Generated Implementation"
+      }
+    ],
+    "configuration": {
+      "title": "BufBear",
+      "properties": {
+        "bufBear.lsp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Start the Buf Language Server for Protobuf semantic features."
+        },
+        "bufBear.buf.path": {
+          "type": "string",
+          "default": "buf",
+          "scope": "resource",
+          "description": "Executable path or command name for the Buf CLI."
+        },
+        "bufBear.buf.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "scope": "resource",
+          "description": "Trace communication with the Buf Language Server."
+        },
+        "bufBear.notifications.missingBuf": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Show one actionable notification when Buf is missing or incompatible."
+        },
+        "bufBear.go.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Enable navigation to source-relative generated Go files."
+        },
+        "bufBear.go.genRoot": {
+          "type": "string",
+          "default": "gen/proto-go",
+          "scope": "resource",
+          "description": "Generated Go root relative to the detected Buf root."
+        },
+        "bufBear.go.sourceRelative": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Map generated Go paths from the Protobuf source-relative path."
+        },
+        "bufBear.conflictWarning.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "description": "Warn once when another full Protobuf language extension is active."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true});require('node:fs').rmSync('out',{recursive:true,force:true})\"",
+    "check-types": "tsc --noEmit",
+    "compile-tests": "tsc -p tsconfig.json --outDir out --noEmit false",
+    "lint": "eslint .",
+    "test:unit": "npm run compile-tests && mocha \"out/test/unit/**/*.test.js\"",
+    "test:integration": "npm run compile-tests && node out/test/integration/runTest.js",
+    "bundle": "node esbuild.mjs",
+    "package": "npm run check-types && node esbuild.mjs --production",
+    "package:vsix": "npm run verify && npm run package && vsce package --out bufbear-0.1.0.vsix",
+    "verify": "npm run lint && npm run check-types && npm run test:unit",
+    "vscode:prepublish": "npm run package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^10.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.1",
+    "@types/vscode": "^1.125.0",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.7.0",
+    "mocha": "^11.7.6",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.65.0"
+  }
+}
