@@ -15,8 +15,6 @@ jobs:
     name: Semantic release and VSIX package
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -47,11 +45,19 @@ jobs:
         shell: bash
         run: .github/scripts/resolve-release-tag.sh resolve "$RUNNER_TEMP/release-tags-before.txt" "$GITHUB_OUTPUT"
 
+      - name: Check Marketplace credentials
+        id: marketplace
+        shell: bash
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: echo "available=$([[ -n \"$VSCE_PAT\" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - name: Publish to VS Code Marketplace
-        if: steps.release.outputs.published == 'true' && env.VSCE_PAT != ''
+        if: steps.release.outputs.published == 'true' && steps.marketplace.outputs.available == 'true'
         run: npx vsce publish --packagePath bufbear-${{ steps.release.outputs.version }}.vsix
         env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
 
       - name: Report Marketplace publication skipped
-        if: steps.release.outputs.published == 'true' && env.VSCE_PAT == ''
+        if: steps.release.outputs.published == 'true' && steps.marketplace.outputs.available != 'true'
         run: echo "VSCE_PAT is not configured; skipping VS Code Marketplace publication."
