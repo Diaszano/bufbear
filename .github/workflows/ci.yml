@@ -73,17 +73,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Lint
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run lint 2>&1 | tee lint.log
-      - name: Upload lint diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: lint-diagnostics
-          path: lint.log
-          retention-days: 1
+        run: npm run lint
       - name: Check types
         run: npm run check-types
 
@@ -150,17 +140,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Package VSIX
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run package:vsix 2>&1 | tee package.log
-      - name: Upload package diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: package-diagnostics
-          path: package.log
-          retention-days: 1
+        run: npm run package:vsix
       - name: Verify VSIX package contract
         run: npm run test:package
 
