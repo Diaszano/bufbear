@@ -10,6 +10,7 @@ import { checkConflicts } from "./ui/conflictDetector.js";
 import { GoNavigationService } from "./navigation/go/navigationService.js";
 import { GeneratedGoImplementationProvider } from "./navigation/go/implementationProvider.js";
 import { BufFormattingProvider } from "./formatting/formatProvider.js";
+import { BufLintCodeActionProvider } from "./ui/codeActions.js";
 
 import { readConfig } from "./config/config.js";
 
@@ -122,6 +123,16 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.languages.registerDocumentFormattingEditProvider({ language: "proto3", scheme: "file" }, formattingProvider),
     vscode.languages.registerDocumentRangeFormattingEditProvider({ language: "proto3", scheme: "file" }, formattingProvider)
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      { language: "proto3", scheme: "file" },
+      new BufLintCodeActionProvider(),
+      {
+        providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
+      }
+    )
   );
 
   context.subscriptions.push(
