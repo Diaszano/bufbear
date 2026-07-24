@@ -46,7 +46,11 @@ jobs:
         run: .github/scripts/resolve-release-tag.sh resolve "$RUNNER_TEMP/release-tags-before.txt" "$GITHUB_OUTPUT"
 
       - name: Publish to VS Code Marketplace
-        if: steps.release.outputs.published == 'true'
+        if: steps.release.outputs.published == 'true' && secrets.VSCE_PAT != ''
         run: npx vsce publish --packagePath bufbear-${{ steps.release.outputs.version }}.vsix
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Report Marketplace publication skipped
+        if: steps.release.outputs.published == 'true' && secrets.VSCE_PAT == ''
+        run: echo "VSCE_PAT is not configured; skipping VS Code Marketplace publication."
