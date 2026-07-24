@@ -53,7 +53,7 @@ export default tseslint.config(
     files: typescriptFiles,
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: ["./tsconfig.json", "./tsconfig.tools.json"],
         tsconfigRootDir: import.meta.dirname,
       },
     },
