@@ -21,7 +21,7 @@ const codeowners = await readFile('.github/CODEOWNERS', 'utf8');
 const prTemplate = await readFile('.github/pull_request_template.md', 'utf8');
 const nvmrc = (await readFile('.nvmrc', 'utf8')).trim();
 const BUF_VERSION = '1.61.0';
-const BUF_SETUP_SHA = '2f6d8f3c8f4c4db1c4e0f5c9f7c9d9e1d8f6d2a1';
+const BUF_SETUP_SHA = 'a47c93e0b1648d5651a065437926377d060baa99';
 
 assert.equal(packageJson.engines?.node, '>=24 <25');
 assert.equal(nvmrc, '24');
@@ -175,6 +175,7 @@ assert.ok(bufVerify, 'Integration job must verify Buf CLI');
 assert.equal(bufVerify.env.BUF_VERSION, BUF_VERSION);
 const integrationRun = integrationSteps.find((entry) => entry.name === 'Headless Integration Tests');
 assert.equal(integrationRun.env.BUF_VERSION, BUF_VERSION);
+assert.ok(ciWorkflow.jobs.build.steps.some((entry) => entry.name === 'Verify VSIX package contract' && entry.run === 'npm run test:package'));
 
 const resolver = resolve('.github/scripts/resolve-release-tag.sh');
 const repository = await mkdtemp(join(tmpdir(), 'bufbear-release-tags-'));

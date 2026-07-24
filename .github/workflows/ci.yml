@@ -93,7 +93,7 @@ jobs:
         run: npm ci
       - name: Set up pinned Buf CLI
         # Reviewed buf-setup-action commit for reproducible CI.
-        uses: bufbuild/buf-setup-action@2f6d8f3c8f4c4db1c4e0f5c9f7c9d9e1d8f6d2a1
+        uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
         with:
           version: 1.61.0
       - name: Verify Buf CLI
@@ -141,6 +141,8 @@ jobs:
         run: npm ci
       - name: Package VSIX
         run: npm run package:vsix
+      - name: Verify VSIX package contract
+        run: npm run test:package
 
   release:
     name: Release and publish
