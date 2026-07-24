@@ -1,4 +1,5 @@
 import eslint from "@eslint/js";
+import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 
 const javascriptFiles = ["**/*.{cjs,js,mjs}"];
@@ -13,7 +14,7 @@ const typeAwareConfigs = [
   files: typescriptFiles,
 }));
 
-export default tseslint.config(
+export default defineConfig(
   {
     name: "bufbear/ignores",
     ignores: [
