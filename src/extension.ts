@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const output = new Output();
   const navigation = new GoNavigationService();
 
-  registerWorkspaceWatchers(context, navigation);
+  registerWorkspaceWatchers(context, navigation, undefined, { api: vscode });
 
   const manager = new DefaultClientManager({
     output,
