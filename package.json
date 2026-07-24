@@ -15,7 +15,8 @@
     "url": "https://github.com/Diaszano/bufbear/issues"
   },
   "engines": {
-    "vscode": "^1.125.0"
+    "vscode": "^1.125.0",
+    "node": ">=24 <25"
   },
   "categories": [
     "Programming Languages",
@@ -156,6 +157,7 @@
     "compile": "tsc -p tsconfig.json",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true});require('node:fs').rmSync('out',{recursive:true,force:true})\"",
     "check": "tsc -p tsconfig.json --noEmit",
+    "check-types": "tsc -p tsconfig.json --noEmit",
     "compile-tests": "tsc -p tsconfig.json --outDir out --noEmit false",
     "lint": "eslint .",
     "test": "npm run test:unit",
@@ -167,8 +169,8 @@
     "bundle:prod": "node esbuild.mjs --production",
     "package": "vsce package --no-dependencies",
     "package:vsix": "npm run verify && npm run package",
-    "verify": "npm run lint && npm run check && npm run test:unit",
-    "vscode:prepublish": "npm run clean && npm run check && npm run bundle:prod",
+    "verify": "npm run lint && npm run check-types && npm run test:unit",
+    "vscode:prepublish": "npm run clean && npm run check-types && npm run bundle:prod",
     "prepare": "husky"
   },
   "dependencies": {

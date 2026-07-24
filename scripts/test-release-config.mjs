@@ -12,6 +12,16 @@ const ACTIONS = {
 };
 
 const config = JSON.parse(await readFile('.releaserc.json', 'utf8'));
+const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
+const nvmrc = (await readFile('.nvmrc', 'utf8')).trim();
+
+assert.equal(packageJson.engines?.node, '>=24 <25');
+assert.equal(nvmrc, '24');
+assert.equal(packageJson.scripts['check-types'], 'tsc -p tsconfig.json --noEmit');
+assert.equal(
+  packageJson.scripts.verify,
+  'npm run lint && npm run check-types && npm run test:unit',
+);
 const plugin = (name) =>
   config.plugins.find((entry) => (Array.isArray(entry) ? entry[0] : entry) === name);
 
