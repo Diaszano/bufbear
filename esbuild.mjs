@@ -1,29 +1,41 @@
-import * as esbuild from "esbuild";
+import { analyzeMetafile, build, context } from "esbuild";
+import baseOptions from "./esbuild.config.json" with { type: "json" };
 
-const production = process.argv.includes("--production");
-const watch = process.argv.includes("--watch");
+const args = new Set(process.argv.slice(2));
+const production = args.delete("--production");
+const watch = args.delete("--watch");
+const analyze = args.delete("--analyze");
 
-const context = await esbuild.context({
-  entryPoints: ["src/extension.ts"],
-  bundle: true,
-  format: "cjs",
-  platform: "node",
-  target: "node22",
-  outfile: "dist/extension.js",
-  external: ["vscode"],
+if (args.size > 0) {
+  throw new Error(`Unknown esbuild option(s): ${[...args].join(", ")}`);
+}
+
+if (watch && analyze) {
+  throw new Error("--analyze cannot be combined with --watch");
+}
+
+const options = {
+  ...baseOptions,
+  absWorkingDir: import.meta.dirname,
+  color: process.stdout.isTTY,
+  define: {
+    "process.env.NODE_ENV": JSON.stringify(production ? "production" : "development"),
+  },
+  keepNames: production,
+  metafile: analyze,
   minify: production,
   sourcemap: production ? false : "inline",
   sourcesContent: !production,
-  logLevel: "info"
-});
+};
 
 if (watch) {
-  await context.watch();
-  console.log("[watch] build started");
+  const buildContext = await context(options);
+  await buildContext.watch();
+  console.log("[esbuild] Watching for changes...");
 } else {
-  try {
-    await context.rebuild();
-  } finally {
-    await context.dispose();
+  const result = await build(options);
+
+  if (result.metafile) {
+    console.log(await analyzeMetafile(result.metafile, { verbose: true }));
   }
 }
