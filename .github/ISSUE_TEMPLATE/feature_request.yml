@@ -10,8 +10,8 @@ body:
     validations:
       required: true
   - type: textarea
-    id: proposal
+    id: solution
     attributes:
-      label: Proposed behavior
+      label: Proposed solution
     validations:
       required: true

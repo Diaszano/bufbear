@@ -34,6 +34,7 @@ assert.equal(packageJson.scripts['test:package'], 'node scripts/test-package-con
 assert.equal(dependabot.version, 2);
 assert.equal(dependabot.updates.length, 2);
 for (const update of dependabot.updates) {
+  assert.equal(update.directory, '/');
   assert.equal(update['target-branch'], 'dev');
   assert.equal(update.schedule.interval, 'weekly');
   assert.equal(update.schedule.day, 'monday');
@@ -43,8 +44,10 @@ for (const update of dependabot.updates) {
   assert.ok(update.groups?.['minor-patch']?.['update-types']?.includes('patch'));
 }
 assert.equal(dependabot.updates[0]['package-ecosystem'], 'npm');
+assert.equal(dependabot.updates[0]['commit-message']?.prefix, 'fix(deps)');
 assert.equal(dependabot.updates[0]['open-pull-requests-limit'], 5);
 assert.equal(dependabot.updates[1]['package-ecosystem'], 'github-actions');
+assert.equal(dependabot.updates[1]['commit-message']?.prefix, 'chore(ci)');
 assert.equal(dependabot.updates[1]['open-pull-requests-limit'], 3);
 assert.match(codeowners, /^\*\s+@diaszano$/m);
 assert.match(codeowners, /^\.github\/\s+@diaszano$/m);
@@ -55,7 +58,13 @@ for (const form of [bugForm, featureForm]) {
   assert.equal(form.name?.includes('BufBear'), true);
   assert.ok(Array.isArray(form.body));
 }
-for (const label of ['VS Code version', 'OS', 'Buf version', 'BufBear version']) assert.match(JSON.stringify(bugForm), new RegExp(label, 'i'));
+const requiredField = (form, id) => {
+  const field = form.body.find((entry) => entry.id === id);
+  assert.ok(field, `${id} field missing`);
+  assert.equal(field.validations?.required, true, `${id} must be required`);
+};
+for (const id of ['vscode', 'os', 'buf', 'bufbear', 'reproduction', 'expected', 'actual']) requiredField(bugForm, id);
+for (const id of ['problem', 'solution']) requiredField(featureForm, id);
 assert.equal(issueConfig.blank_issues_enabled, false);
 assert.match(issueConfig.contact_links?.[0]?.url ?? '', /security\/advisories\/new/);
 assert.equal(packageJson.main, './dist/extension.js');
