@@ -46,7 +46,8 @@ describe("workspace watchers", () => {
     const generated = h.created[1]!;
     generated.change.fire({ fsPath: "/workspace/gen/proto-go/service.pb.go" });
     generated.create.fire({ fsPath: "/workspace/gen/proto-go/service2.pb.go" });
-    assert.deepEqual(h.invalidated, ["/workspace/gen/proto-go/service.pb.go", "/workspace/gen/proto-go/service2.pb.go"]);
+    generated.delete.fire({ fsPath: "/workspace/gen/proto-go/service3.pb.go" });
+    assert.deepEqual(h.invalidated, ["/workspace/gen/proto-go/service.pb.go", "/workspace/gen/proto-go/service2.pb.go", "/workspace/gen/proto-go/service3.pb.go"]);
   });
 
   it("refreshes nested root after buf.yaml metadata event", async () => {
