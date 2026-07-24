@@ -6,10 +6,7 @@ import { join, resolve } from 'node:path';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { load } from 'js-yaml';
 
-const ACTIONS = {
-  checkout: 'actions/checkout@v4',
-  setupNode: 'actions/setup-node@v4',
-};
+const ACTIONS = { checkout: 'actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0', setupNode: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' };
 
 const config = JSON.parse(await readFile('.releaserc.json', 'utf8'));
 const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
@@ -111,10 +108,18 @@ assert.match(
 );
 
 const ciWorkflow = load(await readFile('.github/workflows/ci.yml', 'utf8'));
+for (const workflow of [ciWorkflow, load(await readFile('.github/workflows/pr-title.yml', 'utf8')), releaseWorkflow]) {
+  for (const jobs of Object.values(workflow.jobs ?? {})) for (const entry of jobs.steps ?? []) {
+    if (entry.uses?.startsWith('actions/checkout@')) assert.equal(entry.uses, ACTIONS.checkout);
+    if (entry.uses?.startsWith('actions/setup-node@')) { assert.equal(entry.uses, ACTIONS.setupNode); assert.equal(String(entry.with?.['node-version']), '24'); }
+  }
+}
 assert.ok(ciWorkflow.jobs.commitlint, 'Job commitlint should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.lint, 'Job lint should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.test, 'Job test should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.build, 'Job build should exist in ci.yml');
+assert.deepEqual(ciWorkflow.jobs.quality.needs, ['commitlint','lint','test','test-release','build']);
+assert.equal(ciWorkflow.jobs.release.needs, 'quality');
 const integrationSteps = ciWorkflow.jobs.test.steps;
 const bufSetup = integrationSteps.find((entry) => entry.name === 'Set up pinned Buf CLI');
 assert.ok(bufSetup, 'Integration job must install the pinned Buf CLI');
