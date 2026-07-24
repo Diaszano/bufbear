@@ -74,7 +74,7 @@ assert.equal(npmPlugin[1].npmPublish, false);
 
 const releaseWorkflow = load(await readFile('.github/workflows/release.yml', 'utf8'));
 assert.deepEqual(Object.keys(releaseWorkflow.on), ['workflow_call']);
-assert.deepEqual(releaseWorkflow.permissions, { contents: 'write', packages: 'write' });
+assert.deepEqual(releaseWorkflow.permissions, { contents: 'write' });
 
 const releaseSteps = releaseWorkflow.jobs.release.steps;
 assert.ok(
@@ -109,11 +109,14 @@ assert.match(
 
 const ciWorkflow = load(await readFile('.github/workflows/ci.yml', 'utf8'));
 for (const workflow of [ciWorkflow, load(await readFile('.github/workflows/pr-title.yml', 'utf8')), releaseWorkflow]) {
+  assert.equal(JSON.stringify(workflow).toLowerCase().includes('docker'), false, 'Docker jobs are not allowed');
   for (const jobs of Object.values(workflow.jobs ?? {})) for (const entry of jobs.steps ?? []) {
     if (entry.uses?.startsWith('actions/checkout@')) assert.equal(entry.uses, ACTIONS.checkout);
     if (entry.uses?.startsWith('actions/setup-node@')) { assert.equal(entry.uses, ACTIONS.setupNode); assert.equal(String(entry.with?.['node-version']), '24'); }
   }
 }
+const dependencyReview = ciWorkflow.jobs['dependency-review'].steps.find((entry) => entry.name === 'Dependency Review');
+assert.equal(dependencyReview.uses, 'actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019');
 assert.ok(ciWorkflow.jobs.commitlint, 'Job commitlint should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.lint, 'Job lint should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.test, 'Job test should exist in ci.yml');
