@@ -1,3 +1,5 @@
+## [1.1.0](https://github.com/Diaszano/bufbear/compare/v1.0.0...v1.1.0) (2026-07-24)
+
 # Changelog
 
 All notable changes to the **BufBear** extension will be documented in this file.
