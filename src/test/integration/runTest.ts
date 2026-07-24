@@ -6,14 +6,19 @@ async function main(): Promise<void> {
   try {
     const requiredVersion = process.env.BUF_VERSION ?? "1.61.0";
     const bufPath = process.env.BUF_BIN ?? "buf";
-    const probe = spawnSync(bufPath, ["--version"], { encoding: "utf8" });
-    const actualVersion = probe.stdout.trim();
-    if (probe.status !== 0 || actualVersion !== requiredVersion) {
+    let probe: ReturnType<typeof spawnSync> | undefined;
+    try {
+      probe = spawnSync(bufPath, ["--version"], { encoding: "utf8" });
+    } catch {
+      probe = undefined;
+    }
+    const actualVersion = (probe?.stdout ?? "").toString().trim();
+    if (probe?.error || probe?.status !== 0 || actualVersion !== requiredVersion) {
       throw new Error(
         `Pinned Buf ${requiredVersion} is required; executable '${bufPath}' reported '${actualVersion || "unavailable"}'`
       );
     }
-    console.log(`Using Buf ${probe.stdout.trim()} (required ${requiredVersion})`);
+    console.log(`Using Buf ${actualVersion} (required ${requiredVersion})`);
     const extensionDevelopmentPath = path.resolve(__dirname, "../../../");
     const extensionTestsPath = path.resolve(__dirname, "./suite/index.test.js");
     const testWorkspace = path.resolve(__dirname, "../../../src/test/fixtures/generated-go");
