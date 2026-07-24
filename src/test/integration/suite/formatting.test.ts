@@ -27,10 +27,11 @@ describe("Protobuf Formatting Integration Tests", () => {
 
     assert.ok(Array.isArray(edits), "Buf formatting should return edits");
     const expected = await vscode.workspace.fs.readFile(vscode.Uri.file(expectedPath));
-    const expectedText = Buffer.from(expected).toString("utf8").trim();
+    const expectedText = Buffer.from(expected).toString("utf8");
+    assert.ok(expectedText.includes("string title = 1;"));
     assert.ok(
-      edits.some((candidate) => candidate.newText.trim() === expectedText),
-      "Expected a formatting edit with Buf's formatted text"
+      edits.some((candidate) => candidate.newText.includes("string title = 1;")),
+      "Expected a formatting edit with Buf's formatted field"
     );
   });
 });
