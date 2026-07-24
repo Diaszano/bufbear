@@ -18,7 +18,7 @@ if (watch && analyze) {
 const options: BuildOptions = {
   ...baseOptions,
   absWorkingDir: import.meta.dirname,
-  color: Boolean(process.stdout.isTTY),
+  color: process.stdout.isTTY,
   define: {
     "process.env.NODE_ENV": JSON.stringify(production ? "production" : "development"),
   },
