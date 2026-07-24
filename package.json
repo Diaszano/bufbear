@@ -165,6 +165,7 @@
     "test:integration": "npm run bundle && npm run compile-tests && node out/test/integration/runTest.js",
     "test:commits": "bash .github/scripts/validate-commits.sh",
     "test:release": "node scripts/test-release-config.mjs",
+    "test:package": "node scripts/test-package-config.mjs",
     "bundle": "node esbuild.mjs",
     "bundle:prod": "node esbuild.mjs --production",
     "package": "vsce package --no-dependencies",
