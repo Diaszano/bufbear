@@ -14,6 +14,7 @@ const ACTIONS = {
 const config = JSON.parse(await readFile('.releaserc.json', 'utf8'));
 const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
 const nvmrc = (await readFile('.nvmrc', 'utf8')).trim();
+const BUF_VERSION = '1.61.0';
 
 assert.equal(packageJson.engines?.node, '>=24 <25');
 assert.equal(nvmrc, '24');
@@ -88,6 +89,15 @@ assert.ok(ciWorkflow.jobs.commitlint, 'Job commitlint should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.lint, 'Job lint should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.test, 'Job test should exist in ci.yml');
 assert.ok(ciWorkflow.jobs.build, 'Job build should exist in ci.yml');
+const integrationSteps = ciWorkflow.jobs.test.steps;
+const bufSetup = integrationSteps.find((entry) => entry.name === 'Set up pinned Buf CLI');
+assert.ok(bufSetup, 'Integration job must install the pinned Buf CLI');
+assert.equal(bufSetup.with.version, BUF_VERSION);
+const bufVerify = integrationSteps.find((entry) => entry.name === 'Verify Buf CLI');
+assert.ok(bufVerify, 'Integration job must verify Buf CLI');
+assert.equal(bufVerify.env.BUF_VERSION, BUF_VERSION);
+const integrationRun = integrationSteps.find((entry) => entry.name === 'Headless Integration Tests');
+assert.equal(integrationRun.env.BUF_VERSION, BUF_VERSION);
 
 const resolver = resolve('.github/scripts/resolve-release-tag.sh');
 const repository = await mkdtemp(join(tmpdir(), 'bufbear-release-tags-'));

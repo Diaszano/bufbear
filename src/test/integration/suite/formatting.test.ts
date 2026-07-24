@@ -6,7 +6,8 @@ describe("Protobuf Formatting Integration Tests", () => {
   const workspacePath =
     vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
     path.resolve(__dirname, "../../../../src/test/fixtures/generated-go");
-  const protoPath = path.join(workspacePath, "api/example/v1/example.proto");
+  const protoPath = path.resolve(__dirname, "../../../src/test/fixtures/formatting/unformatted.proto");
+  const expectedPath = path.resolve(__dirname, "../../../src/test/fixtures/formatting/expected.proto");
 
   before(async () => {
     const ext = vscode.extensions.getExtension("diaszano.bufbear");
@@ -26,6 +27,13 @@ describe("Protobuf Formatting Integration Tests", () => {
       { tabSize: 2, insertSpaces: true }
     );
 
-    assert.ok(edits === undefined || Array.isArray(edits));
+    assert.ok(Array.isArray(edits), "Buf formatting should return edits");
+    assert.strictEqual(edits.length, 1, "Expected one full-document formatting edit");
+    const edit = edits[0];
+    assert.ok(edit);
+    assert.deepStrictEqual(edit.range.start, new vscode.Position(0, 0));
+    assert.deepStrictEqual(edit.range.end, document.positionAt(document.getText().length));
+    const expected = await vscode.workspace.fs.readFile(vscode.Uri.file(expectedPath));
+    assert.strictEqual(edit.newText, Buffer.from(expected).toString("utf8"));
   });
 });

@@ -3,6 +3,15 @@ import { runTests } from "@vscode/test-electron";
 
 async function main(): Promise<void> {
   try {
+    const requiredVersion = process.env.BUF_VERSION ?? "1.61.0";
+    const bufPath = process.env.BUF_BIN ?? "buf";
+    const probe = await import("node:child_process").then(({ spawnSync }) =>
+      spawnSync(bufPath, ["--version"], { encoding: "utf8" })
+    );
+    if (probe.status !== 0) {
+      throw new Error(`Pinned Buf ${requiredVersion} is required; executable '${bufPath}' was not found`);
+    }
+    console.log(`Using Buf ${probe.stdout.trim()} (required ${requiredVersion})`);
     const extensionDevelopmentPath = path.resolve(__dirname, "../../../");
     const extensionTestsPath = path.resolve(__dirname, "./suite/index.test.js");
     const testWorkspace = path.resolve(__dirname, "../../../src/test/fixtures/generated-go");
