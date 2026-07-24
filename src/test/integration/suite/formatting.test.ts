@@ -6,8 +6,9 @@ describe("Protobuf Formatting Integration Tests", () => {
   const workspacePath =
     vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
     path.resolve(__dirname, "../../../../src/test/fixtures/generated-go");
-  const protoPath = path.resolve(__dirname, "../../../src/test/fixtures/formatting/unformatted.proto");
-  const expectedPath = path.resolve(__dirname, "../../../src/test/fixtures/formatting/expected.proto");
+  const fixtureRoot = path.resolve(__dirname, "../../../../src/test/fixtures/formatting");
+  const protoPath = path.join(fixtureRoot, "unformatted.proto");
+  const expectedPath = path.join(fixtureRoot, "expected.proto");
 
   before(async () => {
     const ext = vscode.extensions.getExtension("diaszano.bufbear");

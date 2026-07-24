@@ -1,15 +1,17 @@
 import * as path from "node:path";
+import { spawnSync } from "node:child_process";
 import { runTests } from "@vscode/test-electron";
 
 async function main(): Promise<void> {
   try {
     const requiredVersion = process.env.BUF_VERSION ?? "1.61.0";
     const bufPath = process.env.BUF_BIN ?? "buf";
-    const probe = await import("node:child_process").then(({ spawnSync }) =>
-      spawnSync(bufPath, ["--version"], { encoding: "utf8" })
-    );
-    if (probe.status !== 0) {
-      throw new Error(`Pinned Buf ${requiredVersion} is required; executable '${bufPath}' was not found`);
+    const probe = spawnSync(bufPath, ["--version"], { encoding: "utf8" });
+    const actualVersion = probe.stdout.trim();
+    if (probe.status !== 0 || actualVersion !== requiredVersion) {
+      throw new Error(
+        `Pinned Buf ${requiredVersion} is required; executable '${bufPath}' reported '${actualVersion || "unavailable"}'`
+      );
     }
     console.log(`Using Buf ${probe.stdout.trim()} (required ${requiredVersion})`);
     const extensionDevelopmentPath = path.resolve(__dirname, "../../../");

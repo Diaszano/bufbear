@@ -92,7 +92,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Set up pinned Buf CLI
-        uses: bufbuild/buf-setup-action@v1.50.0
+        # Reviewed buf-setup-action commit for reproducible CI.
+        uses: bufbuild/buf-setup-action@2f6d8f3c8f4c4db1c4e0f5c9f7c9d9e1d8f6d2a1
         with:
           version: 1.61.0
       - name: Verify Buf CLI

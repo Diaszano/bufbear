@@ -15,6 +15,7 @@ const config = JSON.parse(await readFile('.releaserc.json', 'utf8'));
 const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
 const nvmrc = (await readFile('.nvmrc', 'utf8')).trim();
 const BUF_VERSION = '1.61.0';
+const BUF_SETUP_SHA = '2f6d8f3c8f4c4db1c4e0f5c9f7c9d9e1d8f6d2a1';
 
 assert.equal(packageJson.engines?.node, '>=24 <25');
 assert.equal(nvmrc, '24');
@@ -93,6 +94,7 @@ const integrationSteps = ciWorkflow.jobs.test.steps;
 const bufSetup = integrationSteps.find((entry) => entry.name === 'Set up pinned Buf CLI');
 assert.ok(bufSetup, 'Integration job must install the pinned Buf CLI');
 assert.equal(bufSetup.with.version, BUF_VERSION);
+assert.equal(bufSetup.uses, `bufbuild/buf-setup-action@${BUF_SETUP_SHA}`);
 const bufVerify = integrationSteps.find((entry) => entry.name === 'Verify Buf CLI');
 assert.ok(bufVerify, 'Integration job must verify Buf CLI');
 assert.equal(bufVerify.env.BUF_VERSION, BUF_VERSION);
