@@ -92,4 +92,33 @@ describe("rootDiscovery", () => {
     const fresh = await findBufRoot(protoFile, tempDir);
     assert.equal(fresh, subDir);
   });
+
+  it("refreshes after marker creation, modification, and deletion", async () => {
+    const root = path.join(tempDir, "refresh");
+    const nested = path.join(root, "nested");
+    await fs.mkdir(nested, { recursive: true });
+    const file = path.join(nested, "x.proto");
+    await fs.writeFile(file, "syntax = \"proto3\";");
+    assert.equal(await findBufRoot(file, root), root);
+    await fs.writeFile(path.join(nested, "buf.yaml"), "version: v1\n");
+    invalidateRootCache(nested);
+    assert.equal(await findBufRoot(file, root), nested);
+    await fs.writeFile(path.join(nested, "buf.yaml"), "version: v2\n");
+    invalidateRootCache(nested);
+    assert.equal(await findBufRoot(file, root), nested);
+    await fs.rm(path.join(nested, "buf.yaml"));
+    invalidateRootCache(nested);
+    assert.equal(await findBufRoot(file, root), root);
+  });
+
+  it("never escapes the workspace boundary after invalidation", async () => {
+    const root = path.join(tempDir, "bounded");
+    const nested = path.join(root, "nested");
+    await fs.mkdir(nested, { recursive: true });
+    await fs.writeFile(path.join(tempDir, "buf.yaml"), "version: v1\n");
+    const file = path.join(nested, "x.proto");
+    await fs.writeFile(file, "syntax = \"proto3\";");
+    invalidateRootCache();
+    assert.equal(await findBufRoot(file, root), root);
+  });
 });
