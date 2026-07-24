@@ -13,15 +13,25 @@ const ACTIONS = {
 
 const config = JSON.parse(await readFile('.releaserc.json', 'utf8'));
 const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
+const packageLock = JSON.parse(await readFile('package-lock.json', 'utf8'));
+const readme = await readFile('README.md', 'utf8');
 const nvmrc = (await readFile('.nvmrc', 'utf8')).trim();
 const BUF_VERSION = '1.61.0';
 const BUF_SETUP_SHA = '2f6d8f3c8f4c4db1c4e0f5c9f7c9d9e1d8f6d2a1';
 
 assert.equal(packageJson.engines?.node, '>=24 <25');
 assert.equal(nvmrc, '24');
+assert.equal(packageLock.version, packageJson.version, 'package-lock root version must match package.json');
+assert.equal(packageLock.packages?.['']?.version, packageJson.version, 'package-lock package root version must match package.json');
 assert.equal(packageJson.scripts['check-types'], 'tsc -p tsconfig.json --noEmit');
 assert.equal(packageJson.scripts['test:package'], 'node scripts/test-package-config.mjs');
 assert.equal(packageJson.main, './dist/extension.js');
+for (const command of packageJson.contributes.commands.map(({ command }) => command)) {
+  assert.ok(readme.includes(`\`${command}\``), `README must document ${command}`);
+}
+for (const setting of Object.keys(packageJson.contributes.configuration.properties)) {
+  assert.ok(readme.includes(`\`${setting}\``), `README must document ${setting}`);
+}
 assert.equal(
   packageJson.scripts.verify,
   'npm run lint && npm run check-types && npm run test:unit',
@@ -67,6 +77,10 @@ assert.deepEqual(Object.keys(releaseWorkflow.on), ['workflow_call']);
 assert.deepEqual(releaseWorkflow.permissions, { contents: 'write', packages: 'write' });
 
 const releaseSteps = releaseWorkflow.jobs.release.steps;
+assert.ok(
+  !releaseSteps.some((entry) => entry['continue-on-error'] === true),
+  'semantic-release failures must fail the release job',
+);
 const step = (name) => releaseSteps.find((entry) => entry.name === name);
 assert.ok(step('Checkout repository'), 'Checkout repository step missing');
 assert.ok(step('Set up Node.js'), 'Set up Node.js step missing');
@@ -85,6 +99,12 @@ const resolveRelease = step('Resolve published version');
 assert.equal(
   resolveRelease.run,
   '.github/scripts/resolve-release-tag.sh resolve "$RUNNER_TEMP/release-tags-before.txt" "$GITHUB_OUTPUT"',
+);
+const marketplace = step('Publish to VS Code Marketplace');
+assert.match(
+  marketplace.run,
+  /bufbear-\$\{\{ steps\.release\.outputs\.version \}\}\.vsix/,
+  'Marketplace must publish the VSIX resolved from the release tag',
 );
 
 const ciWorkflow = load(await readFile('.github/workflows/ci.yml', 'utf8'));

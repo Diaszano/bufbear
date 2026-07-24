@@ -1,5 +1,3 @@
-## 1.0.0 (2026-07-21)
-
 # Changelog
 
 All notable changes to the **BufBear** extension will be documented in this file.
@@ -15,5 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added bounded indexing cache, cancellation, filesystem invalidation, and path traversal protection.
 - Added official Buf Language Server (LSP) integration for linting, formatting, hover tooltips, and schema definition navigation.
 - Added extension commands: `bufBear.restartServer`, `bufBear.showOutput`, `bufBear.checkHealth`, `bufBear.openSettings`, and `bufBear.goToGeneratedImplementation`.
+- Added the `bufBear.formatDocument` command and `bufBear.formatting.enabled` setting.
 - Added status bar indicator showing Buf LSP health and workspace status.
 - Added conflict detection for overlapping Protobuf VS Code extensions.
