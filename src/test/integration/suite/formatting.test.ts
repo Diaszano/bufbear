@@ -3,9 +3,6 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 describe("Protobuf Formatting Integration Tests", () => {
-  const workspacePath =
-    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
-    path.resolve(__dirname, "../../../../src/test/fixtures/generated-go");
   const fixtureRoot = path.resolve(__dirname, "../../../../src/test/fixtures/formatting");
   const protoPath = path.join(fixtureRoot, "unformatted.proto");
   const expectedPath = path.join(fixtureRoot, "expected.proto");

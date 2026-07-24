@@ -1,11 +1,9 @@
 import type * as vscode from "vscode";
 import { invalidateRootCache } from "../lsp/rootDiscovery.js";
-import { GoNavigationService } from "../navigation/go/navigationService.js";
+import type { GoNavigationService } from "../navigation/go/navigationService.js";
 import { readConfig } from "../config/config.js";
 
-export interface WatcherFactory {
-  (pattern: vscode.RelativePattern | vscode.GlobPattern): vscode.FileSystemWatcher;
-}
+export type WatcherFactory = (pattern: vscode.RelativePattern | vscode.GlobPattern) => vscode.FileSystemWatcher;
 export interface WorkspaceWatcherApi {
   workspace: typeof vscode.workspace;
   RelativePattern: typeof vscode.RelativePattern;
@@ -16,7 +14,7 @@ export interface WorkspaceWatcherOptions { invalidateRoots?: () => void; api?: W
 export function registerWorkspaceWatchers(
   context: vscode.ExtensionContext,
   navigation: GoNavigationService,
-  createWatcher: WatcherFactory | undefined = undefined,
+  createWatcher?: WatcherFactory,
   options: WorkspaceWatcherOptions = {}
 ): vscode.Disposable {
   if (!options.api) throw new Error("Workspace watcher API is required");
@@ -58,7 +56,7 @@ export function registerWorkspaceWatchers(
   }));
 
   const registration = new api.Disposable(() => {
-    subscriptions.splice(0).forEach((item) => item.dispose());
+    for (const item of subscriptions.splice(0)) item.dispose();
     disposeWatchers();
   });
   context.subscriptions.push(registration);
