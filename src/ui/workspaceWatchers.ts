@@ -6,11 +6,13 @@ import { readConfig } from "../config/config.js";
 export interface WatcherFactory {
   (pattern: vscode.RelativePattern | vscode.GlobPattern): vscode.FileSystemWatcher;
 }
+export interface WorkspaceWatcherOptions { invalidateRoots?: () => void; }
 
 export function registerWorkspaceWatchers(
   context: vscode.ExtensionContext,
   navigation: GoNavigationService,
-  createWatcher: WatcherFactory = (pattern) => vscode.workspace.createFileSystemWatcher(pattern)
+  createWatcher: WatcherFactory = (pattern) => vscode.workspace.createFileSystemWatcher(pattern),
+  options: WorkspaceWatcherOptions = {}
 ): vscode.Disposable {
   const watchers: vscode.Disposable[] = [];
   const subscriptions: vscode.Disposable[] = [];
@@ -24,7 +26,7 @@ export function registerWorkspaceWatchers(
     const folders = vscode.workspace.workspaceFolders ?? [];
     for (const folder of folders) {
       const metadata = createWatcher(new vscode.RelativePattern(folder, "**/{buf.yaml,buf.lock,buf.gen.yaml,buf.work.yaml}"));
-      const invalidate = () => invalidateRootCache();
+      const invalidate = () => (options.invalidateRoots ?? invalidateRootCache)();
       metadata.onDidCreate(invalidate); metadata.onDidChange(invalidate); metadata.onDidDelete(invalidate);
       watchers.push(metadata);
 
