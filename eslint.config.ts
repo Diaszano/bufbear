@@ -2,7 +2,8 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 const javascriptFiles = ["**/*.{cjs,js,mjs}"];
-const typescriptFiles = ["src/**/*.ts"];
+const toolingTypeScriptFiles = ["esbuild.ts", "eslint.config.ts"];
+const typescriptFiles = ["src/**/*.ts", ...toolingTypeScriptFiles];
 
 const typeAwareConfigs = [
   ...tseslint.configs.strictTypeChecked,
@@ -85,6 +86,13 @@ export default tseslint.config(
         },
       ],
       "no-console": "error",
+    },
+  },
+  {
+    name: "bufbear/tooling",
+    files: toolingTypeScriptFiles,
+    rules: {
+      "no-console": "off",
     },
   },
   {
