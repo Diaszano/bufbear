@@ -77,7 +77,8 @@ Configure BufBear in your VS Code `settings.json`:
 ## Prerequisites
 
 - [VS Code](https://code.visualstudio.com/) v1.125.0 or newer.
-- (Optional, recommended) [Buf CLI](https://buf.build/docs/installation) installed and available on your system `PATH` for full LSP diagnostic features.
+- [Buf CLI](https://buf.build/docs/installation) installed and available on your system `PATH` for Buf Language Server features and document formatting.
+- BufBear's generated-Go navigation works independently of the Buf CLI when the generated output tree is available.
 
 ---
 
