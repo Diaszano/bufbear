@@ -1,0 +1,30 @@
+# Dependencies and generated output
+node_modules/
+dist/
+out/
+coverage/
+.nyc_output/
+.vscode-test/
+.vscode-test-web/
+
+# Generated package-manager and extension artifacts
+package-lock.json
+*.vsix
+*.tgz
+
+# Binary assets
+resources/
+
+# Local AI and agent tooling
+.claude/
+.codex/
+.gemini/
+.opencode/
+.cursor/
+.continue/
+.windsurf/
+.serena/
+.agentmemory/
+.headroom/
+.superpowers/
+docs/superpowers/
