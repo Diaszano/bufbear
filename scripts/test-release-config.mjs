@@ -29,7 +29,11 @@ assert.equal(packageLock.version, packageJson.version, 'package-lock root versio
 assert.equal(packageLock.packages?.['']?.version, packageJson.version, 'package-lock package root version must match package.json');
 assert.match(changelog, /^## \[Unreleased\]/m, 'CHANGELOG must include an Unreleased section');
 assert.doesNotMatch(changelog, new RegExp(`^## \\[${packageJson.version.replaceAll('.', '\\\.')}\\]`, 'm'), 'current package version must not be listed as released');
-assert.equal(packageJson.scripts['check-types'], 'tsc -p tsconfig.json --noEmit');
+assert.equal(packageJson.scripts['check-types'], 'tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tools.json --noEmit');
+assert.equal(packageJson.scripts.bundle, 'jiti esbuild.ts');
+assert.equal(packageJson.scripts['bundle:prod'], 'jiti esbuild.ts --production');
+assert.equal(packageJson.scripts['bundle:analyze'], 'jiti esbuild.ts --production --analyze');
+assert.equal(packageJson.devDependencies.jiti, '^2.7.0');
 assert.equal(packageJson.scripts['test:package'], 'node scripts/test-package-config.mjs');
 assert.equal(dependabot.version, 2);
 assert.equal(dependabot.updates.length, 2);
