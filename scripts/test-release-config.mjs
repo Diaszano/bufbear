@@ -13,6 +13,12 @@ const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
 const packageLock = JSON.parse(await readFile('package-lock.json', 'utf8'));
 const readme = await readFile('README.md', 'utf8');
 const changelog = await readFile('CHANGELOG.md', 'utf8');
+const dependabot = load(await readFile('.github/dependabot.yml', 'utf8'));
+const bugForm = load(await readFile('.github/ISSUE_TEMPLATE/bug_report.yml', 'utf8'));
+const featureForm = load(await readFile('.github/ISSUE_TEMPLATE/feature_request.yml', 'utf8'));
+const issueConfig = load(await readFile('.github/ISSUE_TEMPLATE/config.yml', 'utf8'));
+const codeowners = await readFile('.github/CODEOWNERS', 'utf8');
+const prTemplate = await readFile('.github/pull_request_template.md', 'utf8');
 const nvmrc = (await readFile('.nvmrc', 'utf8')).trim();
 const BUF_VERSION = '1.61.0';
 const BUF_SETUP_SHA = '2f6d8f3c8f4c4db1c4e0f5c9f7c9d9e1d8f6d2a1';
@@ -25,6 +31,33 @@ assert.match(changelog, /^## \[Unreleased\]/m, 'CHANGELOG must include an Unrele
 assert.doesNotMatch(changelog, new RegExp(`^## \\[${packageJson.version.replaceAll('.', '\\\.')}\\]`, 'm'), 'current package version must not be listed as released');
 assert.equal(packageJson.scripts['check-types'], 'tsc -p tsconfig.json --noEmit');
 assert.equal(packageJson.scripts['test:package'], 'node scripts/test-package-config.mjs');
+assert.equal(dependabot.version, 2);
+assert.equal(dependabot.updates.length, 2);
+for (const update of dependabot.updates) {
+  assert.equal(update['target-branch'], 'dev');
+  assert.equal(update.schedule.interval, 'weekly');
+  assert.equal(update.schedule.day, 'monday');
+  assert.equal(update.schedule.time, '09:00');
+  assert.equal(update.schedule.timezone, 'America/Sao_Paulo');
+  assert.ok(update.groups?.['minor-patch']?.['update-types']?.includes('minor'));
+  assert.ok(update.groups?.['minor-patch']?.['update-types']?.includes('patch'));
+}
+assert.equal(dependabot.updates[0]['package-ecosystem'], 'npm');
+assert.equal(dependabot.updates[0]['open-pull-requests-limit'], 5);
+assert.equal(dependabot.updates[1]['package-ecosystem'], 'github-actions');
+assert.equal(dependabot.updates[1]['open-pull-requests-limit'], 3);
+assert.match(codeowners, /^\*\s+@diaszano$/m);
+assert.match(codeowners, /^\.github\/\s+@diaszano$/m);
+for (const entry of ['Conventional Commits', 'lint', 'typecheck', 'unit', 'integration', 'release', 'VSIX', 'documentation']) {
+  assert.match(prTemplate, new RegExp(entry, 'i'));
+}
+for (const form of [bugForm, featureForm]) {
+  assert.equal(form.name?.includes('BufBear'), true);
+  assert.ok(Array.isArray(form.body));
+}
+for (const label of ['VS Code version', 'OS', 'Buf version', 'BufBear version']) assert.match(JSON.stringify(bugForm), new RegExp(label, 'i'));
+assert.equal(issueConfig.blank_issues_enabled, false);
+assert.match(issueConfig.contact_links?.[0]?.url ?? '', /security\/advisories\/new/);
 assert.equal(packageJson.main, './dist/extension.js');
 for (const command of packageJson.contributes.commands.map(({ command }) => command)) {
   assert.ok(readme.includes(`\`${command}\``), `README must document ${command}`);

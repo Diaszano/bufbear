@@ -1,0 +1,47 @@
+name: Bug report (BufBear)
+description: Report a reproducible problem with the BufBear VS Code extension.
+title: "bug: "
+labels: [bug]
+body:
+  - type: input
+    id: vscode
+    attributes:
+      label: VS Code version
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+    validations:
+      required: true
+  - type: input
+    id: buf
+    attributes:
+      label: Buf version/path
+    validations:
+      required: true
+  - type: input
+    id: bufbear
+    attributes:
+      label: BufBear version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
