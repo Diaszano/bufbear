@@ -5,7 +5,10 @@ describe("runProcess (platform)", () => {
   it("captures stdout and stderr on successful execution", async () => {
     const result = await runProcess(
       process.execPath,
-      ["-e", "process.stdout.write('out'); process.stderr.write('err')"],
+      [
+        "-e",
+        "let pending = 2; const done = () => { if (--pending === 0) process.exit(0); }; process.stdout.write('out', done); process.stderr.write('err', done);"
+      ],
       { timeoutMs: 2000 }
     );
     assert.equal(result.stdout, "out");
@@ -28,7 +31,10 @@ describe("runProcess (platform)", () => {
       () =>
         runProcess(
           process.execPath,
-          ["-e", "process.stdout.write(Buffer.alloc(11 * 1024 * 1024))"],
+          [
+            "-e",
+            "process.stdout.write(Buffer.alloc(11 * 1024 * 1024), () => process.exit(0))"
+          ],
           { timeoutMs: 5000 }
         ),
       /Process output buffer limit exceeded/
