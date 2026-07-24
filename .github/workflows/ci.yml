@@ -20,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
 
   commitlint:
     name: Commit messages
@@ -30,15 +30,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -64,11 +64,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -83,17 +83,29 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Set up pinned Buf CLI
+        # Reviewed buf-setup-action commit for reproducible CI.
+        uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
+        with:
+          version: 1.61.0
+      - name: Verify Buf CLI
+        run: buf --version
+        env:
+          BUF_VERSION: 1.61.0
       - name: Unit Tests
         run: npm run test:unit
       - name: Headless Integration Tests
+        env:
+          BUF_VERSION: 1.61.0
+          BUF_BIN: buf
         run: xvfb-run -a npm run test:integration
 
   test-release:
@@ -102,11 +114,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -119,22 +131,31 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - name: Install dependencies
         run: npm ci
       - name: Package VSIX
         run: npm run package:vsix
+      - name: Verify VSIX package contract
+        run: npm run test:package
 
   release:
     name: Release and publish
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    needs: [commitlint, lint, test, test-release, build]
+    needs: quality
     permissions:
       contents: write
-      packages: write
     uses: ./.github/workflows/release.yml
+
+  quality:
+    name: Quality gates
+    needs: [commitlint, lint, test, test-release, build]
+    runs-on: ubuntu-latest
+    if: always() && needs.commitlint.result == 'success' && needs.lint.result == 'success' && needs.test.result == 'success' && needs.test-release.result == 'success' && needs.build.result == 'success'
+    steps:
+      - run: echo "All quality gates passed"

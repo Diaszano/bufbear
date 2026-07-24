@@ -25,6 +25,8 @@ BufBear distinguishes between navigating within Protobuf schemas and navigating 
 - **Go to Definition** (`F12` / `Ctrl+Click`): Supplied by the **Buf Language Server**. Navigates between `.proto` files (e.g., jumping from an imported message reference to its `.proto` definition).
 - **Go to Implementation** (`Ctrl+F12` / `Cmd+F12`): Supplied by **BufBear**. Navigates from `.proto` declarations directly into **generated Go files**.
 
+Buf CLI is required for the Buf Language Server and document-formatting integration. Generated-Go navigation can operate independently when a generated output tree is available, even if the Buf CLI is not installed.
+
 ### Generated Go Layout Example
 
 BufBear maps source `.proto` files to source-relative generated Go outputs:
@@ -50,6 +52,7 @@ BufBear provides the following commands via the Command Palette (`Ctrl+Shift+P` 
 | **BufBear: Check Health** | `bufBear.checkHealth` | Displays environment, CLI path, and LSP status diagnostics. |
 | **BufBear: Open Settings** | `bufBear.openSettings` | Opens VS Code configuration filtered for BufBear settings. |
 | **BufBear: Go to Generated Implementation** | `bufBear.goToGeneratedImplementation` | Explicitly triggers Go to Implementation navigation. |
+| **BufBear: Format Document** | `bufBear.formatDocument` | Formats the active Protobuf document with `buf format`. |
 
 ---
 
@@ -67,13 +70,15 @@ Configure BufBear in your VS Code `settings.json`:
 | `bufBear.go.genRoot` | `string` | `"gen/proto-go"` | Generated Go root directory relative to the Buf root directory. |
 | `bufBear.go.sourceRelative` | `boolean` | `true` | Map generated Go paths using source-relative file structure. |
 | `bufBear.conflictWarning.enabled` | `boolean` | `true` | Warn when conflicting Protobuf extensions are active. |
+| `bufBear.formatting.enabled` | `boolean` | `true` | Enable Protobuf document formatting with `buf format`. |
 
 ---
 
 ## Prerequisites
 
 - [VS Code](https://code.visualstudio.com/) v1.125.0 or newer.
-- (Optional, recommended) [Buf CLI](https://buf.build/docs/installation) installed and available on your system `PATH` for full LSP diagnostic features.
+- [Buf CLI](https://buf.build/docs/installation) installed and available on your system `PATH` for Buf Language Server features and document formatting.
+- BufBear's generated-Go navigation works independently of the Buf CLI when the generated output tree is available.
 
 ---
 

@@ -1,0 +1,17 @@
+name: Feature request (BufBear)
+description: Suggest an improvement to the BufBear VS Code extension.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true

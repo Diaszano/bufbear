@@ -5,7 +5,7 @@ describe("runProcess", () => {
   it("captures stdout without a shell", async () => {
     const result = await runProcess({
       executable: process.execPath,
-      args: ["-e", "process.stdout.write('ok')"],
+      args: ["-e", "process.stdout.write('ok', () => process.exit(0))"],
       timeoutMs: 1000
     });
     assert.equal(result.stdout, "ok");
@@ -16,7 +16,7 @@ describe("runProcess", () => {
   it("captures stderr and non-zero exit code", async () => {
     const result = await runProcess({
       executable: process.execPath,
-      args: ["-e", "process.stderr.write('err'); process.exit(42)"],
+      args: ["-e", "process.stderr.write('err', () => process.exit(42))"],
       timeoutMs: 1000
     });
     assert.equal(result.stderr, "err");
@@ -59,7 +59,10 @@ describe("runProcess", () => {
   it("caps stdout buffer at 1 MiB", async () => {
     const result = await runProcess({
       executable: process.execPath,
-      args: ["-e", "process.stdout.write('x'.repeat(1500000))"],
+      args: [
+        "-e",
+        "process.stdout.write('x'.repeat(1500000), () => process.exit(0))"
+      ],
       timeoutMs: 2000
     });
     assert.ok(result.stdout.length <= 1024 * 1024);
