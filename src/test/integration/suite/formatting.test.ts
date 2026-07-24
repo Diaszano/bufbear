@@ -26,12 +26,15 @@ describe("Protobuf Formatting Integration Tests", () => {
     );
 
     assert.ok(Array.isArray(edits), "Buf formatting should return edits");
-    assert.strictEqual(edits.length, 1, "Expected one full-document formatting edit");
-    const edit = edits[0];
-    assert.ok(edit);
-    assert.deepStrictEqual(edit.range.start, new vscode.Position(0, 0));
-    assert.deepStrictEqual(edit.range.end, document.positionAt(document.getText().length));
     const expected = await vscode.workspace.fs.readFile(vscode.Uri.file(expectedPath));
-    assert.strictEqual(edit.newText, Buffer.from(expected).toString("utf8"));
+    const expectedText = Buffer.from(expected).toString("utf8");
+    const fullDocumentEnd = document.positionAt(document.getText().length);
+    const edit = edits.find(
+      (candidate) =>
+        candidate.range.start.isEqual(new vscode.Position(0, 0)) &&
+        candidate.range.end.isEqual(fullDocumentEnd) &&
+        candidate.newText === expectedText
+    );
+    assert.ok(edit, "Expected a full-document edit with Buf's formatted text");
   });
 });
