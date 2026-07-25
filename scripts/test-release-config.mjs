@@ -28,7 +28,9 @@ assert.equal(nvmrc, '24');
 assert.equal(packageLock.version, packageJson.version, 'package-lock root version must match package.json');
 assert.equal(packageLock.packages?.['']?.version, packageJson.version, 'package-lock package root version must match package.json');
 assert.match(changelog, /^## \[Unreleased\]/m, 'CHANGELOG must include an Unreleased section');
-assert.doesNotMatch(changelog, new RegExp(`^## \\[${packageJson.version.replaceAll('.', '\\.')}\\]`, 'm'), 'current package version must not be listed as released');
+if (!packageJson.version.includes('-')) {
+  assert.doesNotMatch(changelog, new RegExp(`^## \\[${packageJson.version.replaceAll('.', '\\.')}\\]`, 'm'), 'current stable package version must not be listed as released');
+}
 assert.equal(packageJson.scripts['check-types'], 'tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tools.json --noEmit');
 assert.equal(packageJson.scripts.bundle, 'jiti esbuild.ts');
 assert.equal(packageJson.scripts['bundle:prod'], 'jiti esbuild.ts --production');
