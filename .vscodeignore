@@ -1,24 +1,23 @@
-.github/**
-.codex/**
-.husky/**
-.superpowers/**
-docs/superpowers/**
-.vscode/**
-.superpowers/**
-.gemini/**
-src/**
-scripts/**
-logo.png
-.releaserc.json
-.nvmrc
-commitlint.config.js
-docs/**
-.gitignore
-out/**
-node_modules/**
-eslint.config.mjs
-esbuild.mjs
-tsconfig.json
-**/*.map
-**/*.test.*
-*.vsix
+# Deny everything by default. Only the runtime and Marketplace assets below
+# are included in the published VSIX package.
+**/*
+
+# Extension manifest
+!package.json
+
+# Runtime bundle
+!dist/
+!dist/**
+
+# Language support required at runtime
+!language-configuration.json
+!syntaxes/
+!syntaxes/**
+
+# Marketplace assets
+!resources/
+!resources/**
+!README.md
+!CHANGELOG.md
+!LICENSE
+!THIRD_PARTY_NOTICES.md

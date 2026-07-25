@@ -1,0 +1,14 @@
+{
+  "entryPoints": ["src/extension.ts"],
+  "bundle": true,
+  "charset": "utf8",
+  "external": ["vscode"],
+  "format": "cjs",
+  "legalComments": "none",
+  "logLevel": "info",
+  "outfile": "dist/extension.js",
+  "platform": "node",
+  "target": "node22",
+  "treeShaking": true,
+  "tsconfig": "tsconfig.json"
+}
