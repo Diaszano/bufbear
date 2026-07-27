@@ -205,7 +205,7 @@
     "mocha": "^11.7.6",
     "prettier": "3.9.6",
     "semantic-release": "^25.0.8",
-    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.65.0"
   }
