@@ -53,6 +53,7 @@ BufBear provides the following commands via the Command Palette (`Ctrl+Shift+P` 
 | **BufBear: Open Settings** | `bufBear.openSettings` | Opens VS Code configuration filtered for BufBear settings. |
 | **BufBear: Go to Generated Implementation** | `bufBear.goToGeneratedImplementation` | Explicitly triggers Go to Implementation navigation. |
 | **BufBear: Format Document** | `bufBear.formatDocument` | Formats the active Protobuf document with `buf format`. |
+| **BufBear: Show Quick Actions** | `bufBear.showQuickPick` | Opens a quick pick menu with the main BufBear actions (also bound to the status bar item). |
 
 ---
 
