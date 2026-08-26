@@ -11,6 +11,7 @@ import { GoNavigationService } from "./navigation/go/navigationService.js";
 import { GeneratedGoImplementationProvider } from "./navigation/go/implementationProvider.js";
 import { BufFormattingProvider } from "./formatting/formatProvider.js";
 import { BufLintCodeActionProvider } from "./ui/codeActions.js";
+import { shouldRestartLsp } from "./config/restartDecision.js";
 
 import { registerWorkspaceWatchers } from "./ui/workspaceWatchers.js";
 
@@ -97,7 +98,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("bufBear")) {
+      if (shouldRestartLsp((s) => e.affectsConfiguration(s))) {
         const activeDoc = vscode.window.activeTextEditor?.document;
         void manager.restartForResource(activeDoc?.uri, "configuration changed");
         statusBar.update();
