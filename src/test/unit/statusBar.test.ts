@@ -246,4 +246,112 @@ describe("StatusBar", () => {
 
     statusBar.dispose();
   });
+
+  it("tooltip lists managed root path with its state", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = new FakeClientManager();
+    fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
+
+    const statusBar = new StatusBar({
+      createStatusBarItem: () => fakeItem,
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/workspace/service.proto",
+            uri: { fsPath: "/workspace/service.proto" }
+          }
+        } as unknown as vscode.TextEditor),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(
+      fakeItem.tooltip,
+      "BufBear: Ready (1 root)\n\nRoots:\n• /workspace — Ready"
+    );
+    statusBar.dispose();
+  });
+
+  it("tooltip lists every root and includes detail for degraded/error roots", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = new FakeClientManager();
+    fakeManager.currentStatuses = [
+      { root: "/ws/a", state: "ready" },
+      { root: "/ws/b", state: "error", detail: "buf CLI not found" }
+    ];
+
+    const statusBar = new StatusBar({
+      createStatusBarItem: () => fakeItem,
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/ws/b/service.proto",
+            uri: { fsPath: "/ws/b/service.proto" }
+          }
+        } as unknown as vscode.TextEditor),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(fakeItem.isVisible, true);
+    assert.strictEqual(
+      fakeItem.tooltip,
+      "BufBear: Error (2 roots)\n\nRoots:\n• /ws/a — Ready\n• /ws/b — Error: buf CLI not found"
+    );
+    statusBar.dispose();
+  });
+
+  it("tooltip shows degraded detail for the root matching the active document", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = new FakeClientManager();
+    fakeManager.currentStatuses = [
+      { root: "/workspace", state: "degraded", detail: "Buf version outdated" }
+    ];
+
+    const statusBar = new StatusBar({
+      createStatusBarItem: () => fakeItem,
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/workspace/service.proto",
+            uri: { fsPath: "/workspace/service.proto" }
+          }
+        } as unknown as vscode.TextEditor),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(
+      fakeItem.tooltip,
+      "BufBear: Degraded (1 root)\n\nRoots:\n• /workspace — Degraded: Buf version outdated"
+    );
+    statusBar.dispose();
+  });
+
+  it("tooltip keeps previous format when there are no managed roots", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = new FakeClientManager();
+    fakeManager.currentStatuses = [];
+
+    const statusBar = new StatusBar({
+      createStatusBarItem: () => fakeItem,
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/workspace/service.proto",
+            uri: { fsPath: "/workspace/service.proto" }
+          }
+        } as unknown as vscode.TextEditor),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(fakeItem.isVisible, true);
+    assert.strictEqual(fakeItem.tooltip, "BufBear: Disabled / Stopped");
+    statusBar.dispose();
+  });
 });

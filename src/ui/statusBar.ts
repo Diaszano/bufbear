@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import type * as vscode from "vscode";
 import type { ClientManager } from "../lsp/clientManager.js";
-import type { ServerState } from "../lsp/serverState.js";
+import type { RootServerStatus, ServerState } from "../lsp/serverState.js";
 import { readConfig } from "../config/config.js";
 import type { BufBearConfig } from "../config/types.js";
 
@@ -43,6 +43,37 @@ export interface StatusBarDependencies {
   readonly onDidChangeActiveTextEditor?: vscode.Event<vscode.TextEditor | undefined>;
   readonly isTrusted?: () => boolean;
   readonly readConfig?: (resource?: vscode.Uri) => BufBearConfig;
+}
+
+interface StatePresentation {
+  readonly icon: string;
+  readonly label: string;
+}
+
+function describeServerState(state: ServerState): StatePresentation {
+  switch (state) {
+    case "starting":
+      return { icon: "$(sync~spin)", label: "Starting" };
+    case "ready":
+      return { icon: "$(check)", label: "Ready" };
+    case "degraded":
+      return { icon: "$(warning)", label: "Degraded" };
+    case "error":
+      return { icon: "$(error)", label: "Error" };
+    case "stopped":
+    default:
+      return { icon: "$(circle-slash)", label: "Disabled / Stopped" };
+  }
+}
+
+function buildRootsSection(statuses: readonly RootServerStatus[]): string {
+  const lines = statuses.map((status) => {
+    const { label } = describeServerState(status.state);
+    return status.detail
+      ? `• ${status.root} — ${label}: ${status.detail}`
+      : `• ${status.root} — ${label}`;
+  });
+  return ["", "", "Roots:", ...lines].join("\n");
 }
 
 export class StatusBar implements vscode.Disposable {
@@ -95,7 +126,7 @@ export class StatusBar implements vscode.Disposable {
     const config = readCfgFn(document?.uri);
 
     if (!trusted || !config.lspEnabled) {
-      this.render("stopped", "LSP untrusted or disabled");
+      this.render("stopped", "LSP untrusted or disabled", []);
       this.#item.show();
       return;
     }
@@ -120,40 +151,26 @@ export class StatusBar implements vscode.Disposable {
       }
     }
 
-    this.render(state, detail);
+    this.render(state, detail, statuses);
     this.#item.show();
   }
 
-  private render(state: ServerState, detail?: string): void {
-    let icon: string;
-    let label: string;
-
-    switch (state) {
-      case "starting":
-        icon = "$(sync~spin)";
-        label = "Starting";
-        break;
-      case "ready":
-        icon = "$(check)";
-        label = "Ready";
-        break;
-      case "degraded":
-        icon = "$(warning)";
-        label = "Degraded";
-        break;
-      case "error":
-        icon = "$(error)";
-        label = "Error";
-        break;
-      case "stopped":
-      default:
-        icon = "$(circle-slash)";
-        label = "Disabled / Stopped";
-        break;
-    }
+  private render(
+    state: ServerState,
+    detail: string | undefined,
+    statuses: readonly RootServerStatus[]
+  ): void {
+    const { icon, label } = describeServerState(state);
 
     this.#item.text = `${icon} BufBear`;
-    this.#item.tooltip = detail ? `BufBear: ${label} (${detail})` : `BufBear: ${label}`;
+
+    if (statuses.length === 0) {
+      this.#item.tooltip = detail ? `BufBear: ${label} (${detail})` : `BufBear: ${label}`;
+      return;
+    }
+
+    const noun = statuses.length === 1 ? "root" : "roots";
+    this.#item.tooltip = `BufBear: ${label} (${statuses.length} ${noun})${buildRootsSection(statuses)}`;
   }
 
   public dispose(): void {
