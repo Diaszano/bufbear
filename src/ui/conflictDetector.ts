@@ -31,6 +31,23 @@ export function resetConflictWarningSession(): void {
   hasWarnedThisSession = false;
 }
 
+export interface ConflictChangeDependencies extends ConflictDetectorDependencies {
+  readonly extensions?: { readonly onDidChange: vscode.Event<unknown> };
+}
+
+export function subscribeToExtensionChanges(dependencies: ConflictChangeDependencies = {}): vscode.Disposable {
+  const vsc = getVscode();
+  const onDidChange = dependencies.extensions?.onDidChange ?? vsc?.extensions.onDidChange;
+
+  if (!onDidChange) {
+    return { dispose: (): void => undefined };
+  }
+
+  return onDidChange(() => {
+    void checkConflicts(dependencies);
+  });
+}
+
 export async function checkConflicts(dependencies: ConflictDetectorDependencies = {}): Promise<void> {
   if (hasWarnedThisSession) {
     return;

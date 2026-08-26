@@ -6,7 +6,7 @@ import { probeBuf } from "./lsp/bufExecutable.js";
 import { findBufRoot } from "./lsp/rootDiscovery.js";
 import { StatusBar, isBufOrProtoDocument } from "./ui/statusBar.js";
 import { registerCommands } from "./ui/commands.js";
-import { checkConflicts } from "./ui/conflictDetector.js";
+import { checkConflicts, subscribeToExtensionChanges } from "./ui/conflictDetector.js";
 import { GoNavigationService } from "./navigation/go/navigationService.js";
 import { GeneratedGoImplementationProvider } from "./navigation/go/implementationProvider.js";
 import { BufFormattingProvider } from "./formatting/formatProvider.js";
@@ -120,6 +120,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   void checkConflicts();
+  context.subscriptions.push(subscribeToExtensionChanges());
 
   for (const editor of vscode.window.visibleTextEditors) {
     if (isBufOrProtoDocument(editor.document)) {

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import type * as vscode from "vscode";
-import { checkConflicts, resetConflictWarningSession, FULL_PROTO_EXTENSIONS } from "../../ui/conflictDetector.js";
+import {
+  checkConflicts,
+  resetConflictWarningSession,
+  subscribeToExtensionChanges,
+  FULL_PROTO_EXTENSIONS
+} from "../../ui/conflictDetector.js";
 import type { BufBearConfig } from "../../config/types.js";
 
 function createDefaultConfig(overrides: Partial<BufBearConfig> = {}): BufBearConfig {
@@ -16,6 +21,32 @@ function createDefaultConfig(overrides: Partial<BufBearConfig> = {}): BufBearCon
     formattingEnabled: true,
     ...overrides
   };
+}
+
+function createFakeExtensionEvent(): {
+  onDidChange: (listener: (e: unknown) => void) => vscode.Disposable;
+  fire: () => void;
+} {
+  const listeners = new Set<(e: unknown) => void>();
+  return {
+    onDidChange: (listener) => {
+      listeners.add(listener);
+      return {
+        dispose: () => {
+          listeners.delete(listener);
+        }
+      };
+    },
+    fire: () => {
+      for (const listener of [...listeners]) {
+        listener(undefined);
+      }
+    }
+  };
+}
+
+async function settle(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
 describe("ConflictDetector", () => {
@@ -104,5 +135,99 @@ describe("ConflictDetector", () => {
       value: false,
       target: 2 // Workspace target
     });
+  });
+
+  it("warns exactly once when a conflicting extension activates only after onDidChange fires", async () => {
+    let warningCount = 0;
+    let conflictActive = false;
+    const event = createFakeExtensionEvent();
+
+    subscribeToExtensionChanges({
+      readConfig: () => createDefaultConfig(),
+      getExtension: (id) =>
+        conflictActive && id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined,
+      showWarningMessage: async () => {
+        warningCount++;
+        return "Ignore";
+      },
+      extensions: { onDidChange: event.onDidChange }
+    });
+
+    event.fire();
+    await settle();
+    assert.strictEqual(warningCount, 0);
+
+    conflictActive = true;
+    event.fire();
+    await settle();
+    assert.strictEqual(warningCount, 1);
+  });
+
+  it("shows at most one warning across multiple onDidChange firings", async () => {
+    let warningCount = 0;
+    const event = createFakeExtensionEvent();
+
+    subscribeToExtensionChanges({
+      readConfig: () => createDefaultConfig(),
+      getExtension: (id) => (id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
+      showWarningMessage: async () => {
+        warningCount++;
+        return "Ignore";
+      },
+      extensions: { onDidChange: event.onDidChange }
+    });
+
+    event.fire();
+    event.fire();
+    event.fire();
+    await settle();
+
+    assert.strictEqual(warningCount, 1);
+  });
+
+  it("stops calling checkConflicts after the subscription is disposed", async () => {
+    let configReads = 0;
+    const event = createFakeExtensionEvent();
+
+    const subscription = subscribeToExtensionChanges({
+      readConfig: () => {
+        configReads++;
+        return createDefaultConfig();
+      },
+      getExtension: () => undefined,
+      showWarningMessage: async () => "Ignore",
+      extensions: { onDidChange: event.onDidChange }
+    });
+
+    event.fire();
+    await settle();
+    assert.strictEqual(configReads, 1);
+
+    subscription.dispose();
+    event.fire();
+    event.fire();
+    await settle();
+    assert.strictEqual(configReads, 1);
+  });
+
+  it("never warns from onDidChange when no conflicting extension is active", async () => {
+    let warnCalled = false;
+    const event = createFakeExtensionEvent();
+
+    subscribeToExtensionChanges({
+      readConfig: () => createDefaultConfig(),
+      getExtension: () => undefined,
+      showWarningMessage: async () => {
+        warnCalled = true;
+        return undefined;
+      },
+      extensions: { onDidChange: event.onDidChange }
+    });
+
+    event.fire();
+    event.fire();
+    await settle();
+
+    assert.strictEqual(warnCalled, false);
   });
 });
