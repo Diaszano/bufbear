@@ -353,9 +353,9 @@ describe("Commands", () => {
     disposable.dispose();
   });
 
-  it("formatDocument shows error message when formatProtoText fails", async () => {
+  it("formatDocument shows warning message when formatProtoText fails", async () => {
     const registered = new Map<string, (...args: unknown[]) => unknown>();
-    let errorMsg: string | undefined;
+    let warnMsg: string | undefined;
 
     const disposable = registerCommands({
       clientManager: new FakeClientManager(),
@@ -383,9 +383,10 @@ describe("Commands", () => {
         conflictWarningEnabled: true,
         formattingEnabled: true
       }),
+      isTrusted: () => true,
       formatProtoText: async () => Promise.resolve({ success: false as const, error: "syntax error on line 1" }),
-      showErrorMessage: async (msg) => {
-        errorMsg = msg;
+      showWarningMessage: async (msg) => {
+        warnMsg = msg;
         return Promise.resolve(undefined);
       }
     });
@@ -394,7 +395,98 @@ describe("Commands", () => {
     assert.ok(handler);
     await handler();
 
-    assert.strictEqual(errorMsg, "BufBear Formatting Error: syntax error on line 1");
+    assert.strictEqual(warnMsg, "BufBear Formatting Error: syntax error on line 1");
+    disposable.dispose();
+  });
+
+  it("formatDocument skips formatting and shows info when the workspace is not trusted", async () => {
+    const registered = new Map<string, (...args: unknown[]) => unknown>();
+    let infoMsg: string | undefined;
+    let formatCalled = false;
+
+    const disposable = registerCommands({
+      clientManager: new FakeClientManager(),
+      output: new FakeOutput(),
+      registerCommand: (id, handler) => {
+        registered.set(id, handler);
+        return { dispose: () => undefined };
+      },
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            uri: { fsPath: "/workspace/api.proto" },
+            getText: () => "syntax = \"proto3\";"
+          }
+        } as unknown as vscode.TextEditor),
+      isTrusted: () => false,
+      formatProtoText: async () => {
+        formatCalled = true;
+        return Promise.resolve({ success: true as const, formattedText: "syntax = \"proto3\";\n" });
+      },
+      showInformationMessage: async (msg) => {
+        infoMsg = msg;
+        return Promise.resolve(undefined);
+      }
+    });
+
+    const handler = registered.get("bufBear.formatDocument");
+    assert.ok(handler);
+    await handler();
+
+    assert.strictEqual(formatCalled, false);
+    assert.match(infoMsg ?? "", /untrusted/i);
+    disposable.dispose();
+  });
+
+  it("formatDocument skips formatting and shows info when formatting.enabled is false", async () => {
+    const registered = new Map<string, (...args: unknown[]) => unknown>();
+    let infoMsg: string | undefined;
+    let formatCalled = false;
+
+    const disposable = registerCommands({
+      clientManager: new FakeClientManager(),
+      output: new FakeOutput(),
+      registerCommand: (id, handler) => {
+        registered.set(id, handler);
+        return { dispose: () => undefined };
+      },
+      getActiveTextEditor: () =>
+        ({
+          document: {
+            languageId: "proto3",
+            uri: { fsPath: "/workspace/api.proto" },
+            getText: () => "syntax = \"proto3\";"
+          }
+        } as unknown as vscode.TextEditor),
+      readConfig: () => ({
+        lspEnabled: true,
+        bufPath: "buf",
+        traceServer: "off",
+        missingBufNotification: true,
+        goEnabled: true,
+        goGenRoot: "gen/proto-go",
+        goSourceRelative: true,
+        conflictWarningEnabled: true,
+        formattingEnabled: false
+      }),
+      formatProtoText: async () => {
+        formatCalled = true;
+        return Promise.resolve({ success: true as const, formattedText: "syntax = \"proto3\";\n" });
+      },
+      showInformationMessage: async (msg) => {
+        infoMsg = msg;
+        return Promise.resolve(undefined);
+      }
+    });
+
+    const handler = registered.get("bufBear.formatDocument");
+    assert.ok(handler);
+    await handler();
+
+    assert.strictEqual(formatCalled, false);
+    assert.match(infoMsg ?? "", /bufBear\.formatting\.enabled/);
+    assert.match(infoMsg ?? "", /disabled/i);
     disposable.dispose();
   });
 

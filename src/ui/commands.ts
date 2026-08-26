@@ -289,12 +289,12 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
   // 7. bufBear.formatDocument
   disposables.push(
     regCmd("bufBear.formatDocument", async () => {
+      const showInfo =
+        dependencies.showInformationMessage ??
+        ((msg: string) => vsc?.window.showInformationMessage(msg) ?? Promise.resolve(undefined));
       const showWarn =
         dependencies.showWarningMessage ??
         ((msg: string) => vsc?.window.showWarningMessage(msg) ?? Promise.resolve(undefined));
-      const showErr =
-        dependencies.showErrorMessage ??
-        ((msg: string) => vsc?.window.showErrorMessage(msg) ?? Promise.resolve(undefined));
 
       const editor = getEditor();
       if (editor?.document.languageId !== "proto3") {
@@ -302,7 +302,20 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
         return;
       }
 
+      const isTrustedFn = dependencies.isTrusted ?? (() => vsc?.workspace.isTrusted ?? true);
+      if (!isTrustedFn()) {
+        await showInfo("BufBear document formatting is disabled in untrusted workspaces.");
+        return;
+      }
+
       const config = readCfg(editor.document.uri);
+      if (!config.formattingEnabled) {
+        await showInfo(
+          'BufBear document formatting is disabled. Set "bufBear.formatting.enabled": true in Settings to re-enable it.'
+        );
+        return;
+      }
+
       const findRootFn = dependencies.findRoot ?? findBufRoot;
       const workspaceFolder = vsc?.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath;
       const bufRoot = await findRootFn(editor.document.uri.fsPath, workspaceFolder);
@@ -316,7 +329,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       });
 
       if (!result.success) {
-        await showErr(`BufBear Formatting Error: ${result.error}`);
+        await showWarn(`BufBear Formatting Error: ${result.error}`);
         return;
       }
 
