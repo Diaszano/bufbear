@@ -113,7 +113,10 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       const findRootFn = dependencies.findRoot ?? findBufRoot;
 
       if (resource) {
-        const foundRoot = await findRootFn(resource.fsPath);
+        // Bound the upward search to the resource's workspace folder so a
+        // stray buf.yaml above the workspace cannot be picked up.
+        const boundary = vsc?.workspace.getWorkspaceFolder(resource)?.uri.fsPath;
+        const foundRoot = await findRootFn(resource.fsPath, boundary);
         if (foundRoot) {
           rootPath = vsc ? vsc.workspace.asRelativePath(vsc.Uri.file(foundRoot), false) : foundRoot;
         }
@@ -317,13 +320,15 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       }
 
       const findRootFn = dependencies.findRoot ?? findBufRoot;
-      const workspaceFolder = vsc?.workspace.getWorkspaceFolder(editor.document.uri)?.uri.fsPath;
-      const bufRoot = await findRootFn(editor.document.uri.fsPath, workspaceFolder);
-      const cwd = bufRoot ?? workspaceFolder ?? path.dirname(editor.document.uri.fsPath);
+      const document = editor.document;
+      const workspaceFolder = vsc?.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
+      const bufRoot = await findRootFn(document.uri.fsPath, workspaceFolder);
+      const cwd = bufRoot ?? workspaceFolder ?? path.dirname(document.uri.fsPath);
 
       const formatFn = dependencies.formatProtoText ?? formatProtoText;
+      const originalText = document.getText();
       const result = await formatFn({
-        text: editor.document.getText(),
+        text: originalText,
         bufPath: config.bufPath,
         cwd
       });
@@ -333,7 +338,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
         return;
       }
 
-      if (result.formattedText === editor.document.getText()) {
+      if (result.formattedText === originalText) {
         return;
       }
 

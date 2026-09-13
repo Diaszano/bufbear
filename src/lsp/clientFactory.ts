@@ -26,6 +26,18 @@ export function createLanguageClient(input: ClientFactoryInput): LanguageClient 
       shell: false
     });
 
+    // Prevent an unhandled 'error' event (e.g. ENOENT when the configured
+    // Buf binary disappears) from crashing the extension host. The language
+    // client surfaces the failure through its own start/error handling.
+    child.on("error", (err: NodeJS.ErrnoException) => {
+      input.output.write(
+        "error",
+        "BufBear LSP",
+        `Failed to spawn Buf LSP server (${input.executable}): ${err.message}`,
+        input.root.fsPath
+      );
+    });
+
     child.stderr.on("data", (chunk: Buffer | string) => {
       const text = chunk.toString("utf8").trim();
       if (text) {

@@ -2,7 +2,12 @@ import fs from "node:fs/promises";
 import { BoundedCache } from "../../platform/boundedCache.js";
 import type { ProtoDeclaration } from "./declaration.js";
 import { isWithin, mapToGeneratedGo } from "./fileMapping.js";
-import { createGoIndex, type GoIndex, type IndexedLocation } from "./goIndex.js";
+import {
+  createGoIndex,
+  prepareGoLines,
+  type GoIndex,
+  type IndexedLocation
+} from "./goIndex.js";
 
 export const MAX_GENERATED_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -35,7 +40,8 @@ export interface GoNavigationServiceOptions {
 interface CachedFile {
   readonly mtimeMs: number;
   readonly size: number;
-  readonly content: string;
+  /** Pre-masked lines; reused across symbol lookups for this file version. */
+  readonly lines: readonly string[];
   readonly locations: Map<string, IndexedLocation>;
 }
 
@@ -130,11 +136,11 @@ export class GoNavigationService {
 
     const cacheKey = `${target.kind}:${target.symbolName}:${target.parentService ?? ""}`;
     const cached = this.#cache.get(target.filePath);
-    let content: string;
+    let lines: readonly string[];
     let locations: Map<string, IndexedLocation>;
 
     if (cached?.mtimeMs === statResult.mtimeMs && cached.size === statResult.size) {
-      content = cached.content;
+      lines = cached.lines;
       locations = cached.locations;
       const cachedLoc = locations.get(cacheKey);
       if (cachedLoc) {
@@ -144,6 +150,7 @@ export class GoNavigationService {
         };
       }
     } else {
+      let content: string;
       try {
         content = await this.#fileSystem.readFile(target.filePath);
       } catch (err) {
@@ -152,6 +159,7 @@ export class GoNavigationService {
         }
         throw err;
       }
+      lines = prepareGoLines(content);
       locations = new Map<string, IndexedLocation>();
     }
 
@@ -159,7 +167,7 @@ export class GoNavigationService {
       return undefined;
     }
 
-    const location = this.#goIndex.find(content, target, request.isCancelled);
+    const location = this.#goIndex.findInLines(lines, target, request.isCancelled);
 
     if (request.isCancelled()) {
       return undefined;
@@ -172,7 +180,7 @@ export class GoNavigationService {
     this.#cache.set(target.filePath, {
       mtimeMs: statResult.mtimeMs,
       size: statResult.size,
-      content,
+      lines,
       locations
     });
 

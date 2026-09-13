@@ -30,7 +30,9 @@ describe("diffLines", () => {
     const edits = diffLines(original, formatted);
 
     assert.equal(edits.length, 1);
-    assert.deepEqual(edits[0], { startLine: 1, endLineExclusive: 2, newText: "bad line" });
+    const singleEdit = edits[0];
+    assert.ok(singleEdit);
+    assert.deepEqual(singleEdit, { startLine: 1, endLineExclusive: 2, newText: "bad line" });
     assert.deepEqual(applyEdits(original, edits), formatted);
   });
 
@@ -40,9 +42,11 @@ describe("diffLines", () => {
     const edits = diffLines(original, formatted);
 
     assert.equal(edits.length, 1);
-    assert.equal(edits[0]?.startLine, 1);
-    assert.equal(edits[0]?.endLineExclusive, 4);
-    assert.equal(edits[0]?.newText, "  a = 1;\n  b = 2;\n  c = 3;");
+    const blockEdit = edits[0];
+    assert.ok(blockEdit);
+    assert.equal(blockEdit.startLine, 1);
+    assert.equal(blockEdit.endLineExclusive, 4);
+    assert.equal(blockEdit.newText, "  a = 1;\n  b = 2;\n  c = 3;");
     assert.deepEqual(applyEdits(original, edits), formatted);
   });
 

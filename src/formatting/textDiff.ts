@@ -4,40 +4,82 @@ export interface LineEdit {
   readonly newText: string;
 }
 
+/**
+ * Upper bound for the O(n*m) LCS matrix (~16 MiB of Uint32Array at 4M cells).
+ * Beyond this, diffLines falls back to one coarse replace edit covering the
+ * changed region instead of allocating an enormous matrix on the extension
+ * host thread.
+ */
+const MAX_LCS_CELLS = 4 * 1024 * 1024;
+
 export function diffLines(
   originalLines: readonly string[],
   formattedLines: readonly string[]
 ): LineEdit[] {
   const originalCount = originalLines.length;
   const formattedCount = formattedLines.length;
-  const width = formattedCount + 1;
-  const lcs = new Uint32Array((originalCount + 1) * width);
 
-  for (let i = originalCount - 1; i >= 0; i--) {
-    for (let j = formattedCount - 1; j >= 0; j--) {
-      lcs[i * width + j] =
-        originalLines[i] === formattedLines[j]
-          ? lcs[(i + 1) * width + j + 1] + 1
-          : Math.max(lcs[(i + 1) * width + j], lcs[i * width + j + 1]);
+  // Trim the common prefix and suffix first. Formatting usually touches a
+  // small region, so this keeps the quadratic LCS work confined to the
+  // actually-changed middle instead of the whole document.
+  const maxCommon = Math.min(originalCount, formattedCount);
+  let prefix = 0;
+  while (prefix < maxCommon && originalLines[prefix] === formattedLines[prefix]) {
+    prefix++;
+  }
+  let suffix = 0;
+  const maxSuffix = maxCommon - prefix;
+  while (
+    suffix < maxSuffix &&
+    originalLines[originalCount - 1 - suffix] === formattedLines[formattedCount - 1 - suffix]
+  ) {
+    suffix++;
+  }
+
+  const midOriginalCount = originalCount - prefix - suffix;
+  const midFormattedCount = formattedCount - prefix - suffix;
+
+  // Anchor points already known to match (trimmed prefix/suffix), so the
+  // gap-edit pass below only has to consider the middle region.
+  const matches: [number, number][] = [];
+  for (let k = 0; k < prefix; k++) {
+    matches.push([k, k]);
+  }
+
+  if (midOriginalCount > 0 && midFormattedCount > 0 && midOriginalCount * midFormattedCount <= MAX_LCS_CELLS) {
+    const width = midFormattedCount + 1;
+    const lcs = new Uint32Array((midOriginalCount + 1) * width);
+
+    for (let i = midOriginalCount - 1; i >= 0; i--) {
+      const originalLine = originalLines[i + prefix];
+      for (let j = midFormattedCount - 1; j >= 0; j--) {
+        lcs[i * width + j] =
+          originalLine === formattedLines[j + prefix]
+            ? (lcs[(i + 1) * width + j + 1] ?? 0) + 1
+            : Math.max(lcs[(i + 1) * width + j] ?? 0, lcs[i * width + j + 1] ?? 0);
+      }
+    }
+
+    let i = 0;
+    let j = 0;
+    while (i < midOriginalCount && j < midFormattedCount) {
+      if (originalLines[i + prefix] === formattedLines[j + prefix]) {
+        matches.push([i + prefix, j + prefix]);
+        i++;
+        j++;
+      } else if (lcs[i * width + j] === lcs[(i + 1) * width + j + 1]) {
+        i++;
+        j++;
+      } else if ((lcs[(i + 1) * width + j] ?? 0) >= (lcs[i * width + j + 1] ?? 0)) {
+        i++;
+      } else {
+        j++;
+      }
     }
   }
 
-  const matches: Array<[number, number]> = [];
-  let i = 0;
-  let j = 0;
-  while (i < originalCount && j < formattedCount) {
-    if (originalLines[i] === formattedLines[j]) {
-      matches.push([i, j]);
-      i++;
-      j++;
-    } else if (lcs[i * width + j] === lcs[(i + 1) * width + j + 1]) {
-      i++;
-      j++;
-    } else if (lcs[(i + 1) * width + j] >= lcs[i * width + j + 1]) {
-      i++;
-    } else {
-      j++;
-    }
+  for (let k = suffix; k > 0; k--) {
+    matches.push([originalCount - k, formattedCount - k]);
   }
 
   const edits: LineEdit[] = [];
@@ -65,7 +107,7 @@ function mergeAdjacentEdits(edits: LineEdit[]): LineEdit[] {
   const merged: LineEdit[] = [];
   for (const edit of edits) {
     const previous = merged.at(-1);
-    if (!previous || previous.endLineExclusive !== edit.startLine) {
+    if (previous?.endLineExclusive !== edit.startLine) {
       merged.push(edit);
       continue;
     }
@@ -110,7 +152,7 @@ function pushGapEdit(
 
   const insertionText = inserted.join("\n");
   const previous = edits.at(-1);
-  if (previous && previous.endLineExclusive === originalStart) {
+  if (previous?.endLineExclusive === originalStart) {
     const joined = previous.newText === "" ? insertionText : `${previous.newText}\n${insertionText}`;
     edits[edits.length - 1] = { ...previous, newText: joined };
     return;

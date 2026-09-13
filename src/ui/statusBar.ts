@@ -170,7 +170,7 @@ export class StatusBar implements vscode.Disposable {
     }
 
     const noun = statuses.length === 1 ? "root" : "roots";
-    this.#item.tooltip = `BufBear: ${label} (${statuses.length} ${noun})${buildRootsSection(statuses)}`;
+    this.#item.tooltip = `BufBear: ${label} (${String(statuses.length)} ${noun})${buildRootsSection(statuses)}`;
   }
 
   public dispose(): void {

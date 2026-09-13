@@ -146,9 +146,9 @@ describe("ConflictDetector", () => {
       readConfig: () => createDefaultConfig(),
       getExtension: (id) =>
         conflictActive && id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined,
-      showWarningMessage: async () => {
+      showWarningMessage: () => {
         warningCount++;
-        return "Ignore";
+        return Promise.resolve("Ignore");
       },
       extensions: { onDidChange: event.onDidChange }
     });
@@ -170,9 +170,9 @@ describe("ConflictDetector", () => {
     subscribeToExtensionChanges({
       readConfig: () => createDefaultConfig(),
       getExtension: (id) => (id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
-      showWarningMessage: async () => {
+      showWarningMessage: () => {
         warningCount++;
-        return "Ignore";
+        return Promise.resolve("Ignore");
       },
       extensions: { onDidChange: event.onDidChange }
     });
@@ -195,7 +195,7 @@ describe("ConflictDetector", () => {
         return createDefaultConfig();
       },
       getExtension: () => undefined,
-      showWarningMessage: async () => "Ignore",
+      showWarningMessage: () => Promise.resolve("Ignore"),
       extensions: { onDidChange: event.onDidChange }
     });
 
@@ -217,9 +217,9 @@ describe("ConflictDetector", () => {
     subscribeToExtensionChanges({
       readConfig: () => createDefaultConfig(),
       getExtension: () => undefined,
-      showWarningMessage: async () => {
+      showWarningMessage: () => {
         warnCalled = true;
-        return undefined;
+        return Promise.resolve(undefined);
       },
       extensions: { onDidChange: event.onDidChange }
     });

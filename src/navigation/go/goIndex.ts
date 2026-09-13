@@ -12,10 +12,29 @@ export interface GoIndex {
     target: GoTarget,
     isCancelled?: () => boolean
   ): IndexedLocation | undefined;
+  /**
+   * Same as {@link GoIndex.find}, but operates on pre-masked lines produced
+   * by {@link prepareGoLines} so callers can amortize masking across several
+   * symbol lookups against the same file version.
+   */
+  findInLines(
+    lines: readonly string[],
+    target: GoTarget,
+    isCancelled?: () => boolean
+  ): IndexedLocation | undefined;
 }
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+/**
+ * Masks comments and string literals and splits into lines once per file
+ * version. Callers should reuse the result for repeated lookups instead of
+ * re-running the byte-level scan for every symbol.
+ */
+export function prepareGoLines(content: string): string[] {
+  return maskCommentsAndStrings(content).split(/\r?\n/u);
 }
 
 function maskCommentsAndStrings(text: string): string {
@@ -84,8 +103,16 @@ function maskCommentsAndStrings(text: string): string {
 }
 
 class GoIndexImpl implements GoIndex {
-  find(
+  public find(
     content: string,
+    target: GoTarget,
+    isCancelled?: () => boolean
+  ): IndexedLocation | undefined {
+    return this.findInLines(prepareGoLines(content), target, isCancelled);
+  }
+
+  public findInLines(
+    lines: readonly string[],
     target: GoTarget,
     isCancelled?: () => boolean
   ): IndexedLocation | undefined {
@@ -93,8 +120,6 @@ class GoIndexImpl implements GoIndex {
       return undefined;
     }
 
-    const maskedContent = maskCommentsAndStrings(content);
-    const lines = maskedContent.split(/\r?\n/u);
     const escapedSymbol = escapeRegExp(target.symbolName);
 
     switch (target.kind) {

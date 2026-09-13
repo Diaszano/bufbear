@@ -70,11 +70,9 @@ function createMockDocument(text: string): vscode.TextDocument {
     lineCount: lines.length,
     lineAt: (index: number) => {
       const lineText = lines[index] ?? "";
+      // Mirror the real API: lineAt().range is a Range with Position endpoints.
       return {
-        range: {
-          start: { line: index, character: 0 },
-          end: { line: index, character: lineText.length }
-        }
+        range: new TestRange(new TestPosition(index, 0), new TestPosition(index, lineText.length))
       };
     }
   } as unknown as vscode.TextDocument;
@@ -154,16 +152,20 @@ describe("BufFormattingProvider", () => {
     );
 
     assert.equal(edits.length, 2);
+    const firstEdit = edits[0];
+    const secondEdit = edits[1];
+    assert.ok(firstEdit);
+    assert.ok(secondEdit);
     assert.deepEqual(
-      edits[0]?.range,
+      firstEdit.range,
       new TestRange(new TestPosition(1, 0), new TestPosition(2, "  string b = 2;".length))
     );
-    assert.equal(edits[0]?.newText, "  string a = 1;  string b = 2;");
+    assert.equal(firstEdit.newText, "  string a = 1;  string b = 2;");
     assert.deepEqual(
-      edits[1]?.range,
+      secondEdit.range,
       new TestRange(new TestPosition(5, 0), new TestPosition(5, "  int64  x = 1;".length))
     );
-    assert.equal(edits[1]?.newText, "  int64 x = 1;");
+    assert.equal(secondEdit.newText, "  int64 x = 1;");
   });
 
   it("returns empty edits when the document is already formatted", async () => {
