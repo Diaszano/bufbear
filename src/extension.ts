@@ -11,9 +11,13 @@ import { GoNavigationService } from "./navigation/go/navigationService.js";
 import { GeneratedGoImplementationProvider } from "./navigation/go/implementationProvider.js";
 import { BufFormattingProvider } from "./formatting/formatProvider.js";
 import { BufLintCodeActionProvider } from "./ui/codeActions.js";
-import { shouldRestartLsp } from "./config/restartDecision.js";
-
 import { registerWorkspaceWatchers } from "./ui/workspaceWatchers.js";
+
+const LSP_RESTART_SETTINGS = [
+  "bufBear.buf.path",
+  "bufBear.lsp.enabled",
+  "bufBear.buf.trace.server"
+] as const;
 
 let shutdown: (() => Promise<void>) | undefined;
 
@@ -98,7 +102,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (shouldRestartLsp((s) => e.affectsConfiguration(s))) {
+      if (LSP_RESTART_SETTINGS.some((setting) => e.affectsConfiguration(setting))) {
         const activeDoc = vscode.window.activeTextEditor?.document;
         void manager.restartForResource(activeDoc?.uri, "configuration changed");
         statusBar.update();
