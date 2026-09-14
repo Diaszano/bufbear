@@ -11,14 +11,6 @@ import type { readConfig } from "../config/config.js";
 import type { BufBearConfig } from "../config/types.js";
 import { getVscode } from "../platform/vscodeRef.js";
 
-export interface ClientManager {
-  ensureForDocument(document: vscode.TextDocument): Promise<void>;
-  restartForResource(resource?: vscode.Uri, reason?: string): Promise<void>;
-  stopForRoot(root: string): Promise<void>;
-  stopAll(): Promise<void>;
-  statuses(): readonly RootServerStatus[];
-  onDidChangeStatus: vscode.Event<readonly RootServerStatus[]>;
-}
 
 export interface ClientManagerDependencies {
   readonly output: Pick<Output, "write" | "show" | "dispose">;
@@ -79,7 +71,7 @@ function makeFileUri(filePath: string): vscode.Uri {
   return vsc ? vsc.Uri.file(filePath) : ({ fsPath: filePath, scheme: "file" } as unknown as vscode.Uri);
 }
 
-export class DefaultClientManager implements ClientManager {
+export class ClientManager {
   readonly #deps: ClientManagerDependencies;
   readonly #clients = new Map<string, ManagedRootClient>();
   readonly #startupPromises = new Map<string, Promise<void>>();
@@ -487,8 +479,4 @@ export class DefaultClientManager implements ClientManager {
       }, delay);
     }
   }
-}
-
-export function createClientManager(dependencies: ClientManagerDependencies): ClientManager {
-  return new DefaultClientManager(dependencies);
 }

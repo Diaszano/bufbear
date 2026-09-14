@@ -30,7 +30,7 @@ class FakeStatusBarItem implements vscode.StatusBarItem {
   }
 }
 
-class FakeClientManager implements ClientManager {
+class FakeClientManager {
   public currentStatuses: RootServerStatus[] = [];
   private listeners: ((statuses: readonly RootServerStatus[]) => void)[] = [];
 
@@ -78,10 +78,14 @@ class FakeClientManager implements ClientManager {
   }
 }
 
+function createFakeClientManager(): FakeClientManager & ClientManager {
+  return new FakeClientManager() as unknown as FakeClientManager & ClientManager;
+}
+
 describe("StatusBar", () => {
   it("hides status bar item when non-proto file is active", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
       createStatusBarItem: () => fakeItem,
@@ -103,7 +107,7 @@ describe("StatusBar", () => {
 
   it("shows $(sync~spin) BufBear for starting state on proto file", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "starting" }];
 
     const statusBar = new StatusBar({
@@ -127,7 +131,7 @@ describe("StatusBar", () => {
 
   it("shows $(check) BufBear for ready state", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
 
     const statusBar = new StatusBar({
@@ -151,7 +155,7 @@ describe("StatusBar", () => {
 
   it("shows $(warning) BufBear for degraded state", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "degraded", detail: "Buf version outdated" }];
 
     const statusBar = new StatusBar({
@@ -175,7 +179,7 @@ describe("StatusBar", () => {
 
   it("shows $(error) BufBear for error state", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "error" }];
 
     const statusBar = new StatusBar({
@@ -199,7 +203,7 @@ describe("StatusBar", () => {
 
   it("shows $(circle-slash) BufBear when untrusted or disabled", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
       createStatusBarItem: () => fakeItem,
@@ -223,7 +227,7 @@ describe("StatusBar", () => {
 
   it("updates automatically when client status changes", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
       createStatusBarItem: () => fakeItem,
@@ -249,7 +253,7 @@ describe("StatusBar", () => {
 
   it("tooltip lists managed root path with its state", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
 
     const statusBar = new StatusBar({
@@ -275,7 +279,7 @@ describe("StatusBar", () => {
 
   it("tooltip lists every root and includes detail for degraded/error roots", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [
       { root: "/ws/a", state: "ready" },
       { root: "/ws/b", state: "error", detail: "buf CLI not found" }
@@ -305,7 +309,7 @@ describe("StatusBar", () => {
 
   it("tooltip shows degraded detail for the root matching the active document", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [
       { root: "/workspace", state: "degraded", detail: "Buf version outdated" }
     ];
@@ -333,7 +337,7 @@ describe("StatusBar", () => {
 
   it("tooltip keeps previous format when there are no managed roots", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [];
 
     const statusBar = new StatusBar({

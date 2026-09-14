@@ -40,7 +40,7 @@ class FakeOutput {
   }
 }
 
-class FakeClientManager implements ClientManager {
+class FakeClientManager {
   public restartedResource: vscode.Uri | undefined;
   public currentStatuses: RootServerStatus[] = [];
 
@@ -76,10 +76,14 @@ class FakeClientManager implements ClientManager {
   }
 }
 
+function createFakeClientManager(): FakeClientManager & ClientManager {
+  return new FakeClientManager() as unknown as FakeClientManager & ClientManager;
+}
+
 describe("Commands", () => {
   it("registers all required commands and disposes cleanly", () => {
     const registered = new Map<string, (...args: unknown[]) => unknown>();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     const fakeOutput = new FakeOutput();
 
     const disposable = registerCommands({
@@ -105,7 +109,7 @@ describe("Commands", () => {
 
   it("restartServer command delegates to clientManager.restartForResource", async () => {
     const registered = new Map<string, (...args: unknown[]) => unknown>();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     const fakeOutput = new FakeOutput();
 
     const disposable = registerCommands({
@@ -131,7 +135,7 @@ describe("Commands", () => {
 
   it("showOutput command shows the output channel", () => {
     const registered = new Map<string, (...args: unknown[]) => unknown>();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     const fakeOutput = new FakeOutput();
 
     const disposable = registerCommands({
@@ -155,7 +159,7 @@ describe("Commands", () => {
 
   it("checkHealth command outputs formatted health report without env vars", async () => {
     const registered = new Map<string, (...args: unknown[]) => unknown>();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     const fakeOutput = new FakeOutput();
 
     fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
@@ -224,7 +228,7 @@ describe("Commands", () => {
     let shownMessage: string | undefined;
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);
@@ -253,7 +257,7 @@ describe("Commands", () => {
     let shownMessage: string | undefined;
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);
@@ -285,7 +289,7 @@ describe("Commands", () => {
     let shownDoc: vscode.TextDocument | undefined;
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);
@@ -329,7 +333,7 @@ describe("Commands", () => {
     let warnMsg: string | undefined;
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);
@@ -358,7 +362,7 @@ describe("Commands", () => {
     let warnMsg: string | undefined;
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);
@@ -405,7 +409,7 @@ describe("Commands", () => {
     let formatCalled = false;
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);
@@ -445,7 +449,7 @@ describe("Commands", () => {
     let formatCalled = false;
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);
@@ -496,7 +500,7 @@ describe("Commands", () => {
     let editContent = "";
 
     const disposable = registerCommands({
-      clientManager: new FakeClientManager(),
+      clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       registerCommand: (id, handler) => {
         registered.set(id, handler);

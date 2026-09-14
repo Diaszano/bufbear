@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { Output } from "./platform/output.js";
-import { DefaultClientManager } from "./lsp/clientManager.js";
+import { ClientManager } from "./lsp/clientManager.js";
 import { createLanguageClient } from "./lsp/clientFactory.js";
 import { probeBuf } from "./lsp/bufExecutable.js";
 import { findBufRoot } from "./lsp/rootDiscovery.js";
@@ -27,7 +27,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   registerWorkspaceWatchers(context, navigation, undefined, { api: vscode });
 
-  const manager = new DefaultClientManager({
+  const manager = new ClientManager({
     output,
     createClient: createLanguageClient,
     probeBuf,
