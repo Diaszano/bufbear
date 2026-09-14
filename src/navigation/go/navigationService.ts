@@ -24,14 +24,16 @@ export interface NavigationResult {
   readonly location: IndexedLocation;
 }
 
-export interface FileSystem {
-  stat(filePath: string): Promise<{ mtimeMs: number; size: number }>;
-  readFile(filePath: string): Promise<string>;
-  realpath?(filePath: string): Promise<string>;
+export interface FileSystemReader {
+  stat?: ((filePath: string) => Promise<{ mtimeMs: number; size: number }>) | typeof fs.stat;
+  readFile?: ((filePath: string, encoding?: BufferEncoding | null) => Promise<string | Buffer>) | typeof fs.readFile;
+  realpath?: ((filePath: string) => Promise<string>) | typeof fs.realpath;
 }
 
+export type FileSystem = FileSystemReader;
+
 export interface GoNavigationServiceOptions {
-  readonly fileSystem?: FileSystem;
+  readonly fileSystem?: FileSystemReader;
   readonly goIndex?: GoIndex;
   readonly onFileTooLarge?: (filePath: string, size: number) => void;
 }
@@ -44,19 +46,6 @@ interface CachedFile {
   readonly locations: Map<string, IndexedLocation>;
 }
 
-const defaultFileSystem: FileSystem = {
-  async stat(filePath: string) {
-    const value = await fs.stat(filePath);
-    return { mtimeMs: value.mtimeMs, size: value.size };
-  },
-  async readFile(filePath: string) {
-    return fs.readFile(filePath, "utf8");
-  },
-  async realpath(filePath: string) {
-    return fs.realpath(filePath);
-  }
-};
-
 function isFsNotFoundError(error: unknown): boolean {
   if (typeof error === "object" && error !== null && "code" in error) {
     const code = (error as { code?: unknown }).code;
@@ -66,15 +55,41 @@ function isFsNotFoundError(error: unknown): boolean {
 }
 
 export class GoNavigationService {
-  readonly #fileSystem: FileSystem;
+  readonly #fileSystem: FileSystemReader | undefined;
   readonly #goIndex: GoIndex;
   readonly #onFileTooLarge: ((filePath: string, size: number) => void) | undefined;
   readonly #cache = new BoundedCache<string, CachedFile>(256);
 
   public constructor(options: GoNavigationServiceOptions = {}) {
-    this.#fileSystem = options.fileSystem ?? defaultFileSystem;
+    this.#fileSystem = options.fileSystem;
     this.#goIndex = options.goIndex ?? new GoIndex();
     this.#onFileTooLarge = options.onFileTooLarge;
+  }
+
+  get #shouldResolveRealpath(): boolean {
+    return !this.#fileSystem || Boolean(this.#fileSystem.realpath);
+  }
+
+  async #stat(filePath: string): Promise<{ mtimeMs: number; size: number }> {
+    if (this.#fileSystem?.stat) {
+      return this.#fileSystem.stat(filePath);
+    }
+    return fs.stat(filePath);
+  }
+
+  async #readFile(filePath: string): Promise<string> {
+    if (this.#fileSystem?.readFile) {
+      const content = await this.#fileSystem.readFile(filePath, "utf8");
+      return typeof content === "string" ? content : content.toString("utf8");
+    }
+    return fs.readFile(filePath, "utf8");
+  }
+
+  async #realpath(filePath: string): Promise<string> {
+    if (this.#fileSystem?.realpath) {
+      return this.#fileSystem.realpath(filePath);
+    }
+    return fs.realpath(filePath);
   }
 
   public async find(request: NavigationRequest): Promise<NavigationResult | undefined> {
@@ -95,9 +110,9 @@ export class GoNavigationService {
     }
 
     let realWorkspaceRoot = request.workspaceRoot;
-    if (this.#fileSystem.realpath) {
+    if (this.#shouldResolveRealpath) {
       try {
-        realWorkspaceRoot = await this.#fileSystem.realpath(request.workspaceRoot);
+        realWorkspaceRoot = await this.#realpath(request.workspaceRoot);
       } catch {
         // Fall back to original workspaceRoot if realpath fails
       }
@@ -105,7 +120,7 @@ export class GoNavigationService {
 
     let statResult: { mtimeMs: number; size: number };
     try {
-      statResult = await this.#fileSystem.stat(target.filePath);
+      statResult = await this.#stat(target.filePath);
     } catch (err) {
       if (isFsNotFoundError(err)) {
         return undefined;
@@ -113,9 +128,9 @@ export class GoNavigationService {
       throw err;
     }
 
-    if (this.#fileSystem.realpath) {
+    if (this.#shouldResolveRealpath) {
       try {
-        const realTarget = await this.#fileSystem.realpath(target.filePath);
+        const realTarget = await this.#realpath(target.filePath);
         if (!isWithin(realWorkspaceRoot, realTarget)) {
           return undefined;
         }
@@ -151,7 +166,7 @@ export class GoNavigationService {
     } else {
       let content: string;
       try {
-        content = await this.#fileSystem.readFile(target.filePath);
+        content = await this.#readFile(target.filePath);
       } catch (err) {
         if (isFsNotFoundError(err)) {
           return undefined;

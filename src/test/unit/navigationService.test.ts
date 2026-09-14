@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   GoNavigationService,
   MAX_GENERATED_FILE_BYTES,
-  type FileSystem,
+  type FileSystemReader,
   type NavigationRequest
 } from "../../navigation/go/navigationService.js";
 import { GoIndex } from "../../navigation/go/goIndex.js";
@@ -36,7 +36,7 @@ function createRequest(overrides?: Partial<NavigationRequest>): NavigationReques
   };
 }
 
-class MockFileSystem implements FileSystem {
+class MockFileSystem implements FileSystemReader {
   public files = new Map<string, { mtimeMs: number; size: number; content: string }>();
   public statCalls: string[] = [];
   public readCalls: string[] = [];
@@ -280,4 +280,29 @@ describe("GoNavigationService", () => {
     assert.equal(result.filePath, generatedGoFile);
     assert.equal(result.location.line, 2);
   });
+
+  it("uses default node:fs/promises directly when no fileSystem is provided", async () => {
+    const service = new GoNavigationService();
+    const result = await service.find(createRequest());
+    assert.equal(result, undefined);
+  });
+
+  it("supports partial filesystem override (e.g. stat only)", async () => {
+    let statCalled = false;
+    const service = new GoNavigationService({
+      fileSystem: {
+        async stat() {
+          await Promise.resolve();
+          statCalled = true;
+          const err = new Error("ENOENT: no such file or directory") as Error & { code: string };
+          err.code = "ENOENT";
+          throw err;
+        }
+      }
+    });
+    const result = await service.find(createRequest());
+    assert.equal(result, undefined);
+    assert.equal(statCalled, true);
+  });
 });
+
