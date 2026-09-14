@@ -21,6 +21,7 @@ export interface ResolutionDependencies {
   readonly findBufRoot?: typeof findBufRoot | undefined;
   readonly getWorkspaceFolder?: ((uri: vscode.Uri) => vscode.WorkspaceFolder | undefined) | undefined;
   readonly isTrusted?: (() => boolean) | undefined;
+  readonly vscode?: typeof vscode | undefined;
 }
 
 export type ResolutionStatus =
@@ -43,7 +44,7 @@ export async function resolveGoImplementation(
   token: vscode.CancellationToken | undefined,
   deps: ResolutionDependencies
 ): Promise<GoImplementationResolution> {
-  const vsc = getVscode();
+  const vsc = deps.vscode ?? getVscode();
   const isTrustedFn = deps.isTrusted ?? (() => vsc?.workspace.isTrusted ?? true);
   if (!isTrustedFn() || token?.isCancellationRequested) {
     return { status: token?.isCancellationRequested ? "cancelled" : "untrusted" };
@@ -118,39 +119,18 @@ export class GeneratedGoImplementationProvider implements vscode.ImplementationP
         return undefined;
       }
 
-      const vsc = getVscode();
-      const UriClass = vsc?.Uri ?? ({ file: (pathStr: string) => ({ fsPath: pathStr }) as vscode.Uri });
-      const PositionClass =
-        vsc?.Position ??
-        (class {
-          public line: number;
-          public character: number;
-          public constructor(line: number, character: number) {
-            this.line = line;
-            this.character = character;
-          }
-        } as unknown as typeof vscode.Position);
+      const vsc = this.#dependencies.vscode ?? getVscode();
+      if (!vsc) {
+        return undefined;
+      }
 
-      const LocationClass =
-        vsc?.Location ??
-        (class {
-          public uri: vscode.Uri;
-          public range: { start: vscode.Position; end: vscode.Position };
-          public constructor(uri: vscode.Uri, rangeOrPosition: vscode.Position) {
-            this.uri = uri;
-            this.range = { start: rangeOrPosition, end: rangeOrPosition };
-          }
-        } as unknown as typeof vscode.Location);
-
-      const positionResult = new PositionClass(
-        resolution.result.location.line,
-        resolution.result.location.startCharacter
+      return new vsc.Location(
+        vsc.Uri.file(resolution.result.filePath),
+        new vsc.Position(resolution.result.location.line, resolution.result.location.startCharacter)
       );
-
-      return new LocationClass(UriClass.file(resolution.result.filePath), positionResult);
     } catch (err) {
-      const vsc = getVscode();
-      const relPath = vsc ? vsc.workspace.asRelativePath(document.uri, false) : document.uri.fsPath;
+      const vsc = this.#dependencies.vscode ?? getVscode();
+      const relPath = vsc?.workspace ? vsc.workspace.asRelativePath(document.uri, false) : document.uri.fsPath;
       this.#dependencies.output.write(
         "error",
         "GoNavigation",
