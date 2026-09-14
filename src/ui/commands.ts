@@ -8,15 +8,7 @@ import { readConfig } from "../config/config.js";
 import { GoNavigationService } from "../navigation/go/navigationService.js";
 import { resolveGoImplementation } from "../navigation/go/implementationProvider.js";
 import { formatProtoText } from "../formatting/bufFormatter.js";
-
-function getVscode(): typeof vscode | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("vscode") as typeof vscode;
-  } catch {
-    return undefined;
-  }
-}
+import { getVscode } from "../platform/vscodeRef.js";
 
 export interface QuickPickCommandItem {
   readonly label: string;

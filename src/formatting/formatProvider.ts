@@ -4,15 +4,7 @@ import { formatProtoText } from "./bufFormatter.js";
 import { diffLines, type LineEdit } from "./textDiff.js";
 import { findBufRoot } from "../lsp/rootDiscovery.js";
 import { readConfig } from "../config/config.js";
-
-function getVscode(): typeof vscode | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("vscode") as typeof vscode;
-  } catch {
-    return undefined;
-  }
-}
+import { getVscode } from "../platform/vscodeRef.js";
 
 export interface FormattingProviderDependencies {
   findRoot?: typeof findBufRoot;

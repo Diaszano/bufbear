@@ -1,14 +1,6 @@
 import type * as vscode from "vscode";
+import { getVscode } from "../platform/vscodeRef.js";
 import type { BufBearConfig, TraceServer } from "./types.js";
-
-function getVscode(): typeof vscode | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("vscode") as typeof vscode;
-  } catch {
-    return undefined;
-  }
-}
 
 export function readConfig(resource?: vscode.Uri): BufBearConfig {
   const vsc = getVscode();

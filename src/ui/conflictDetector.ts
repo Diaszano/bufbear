@@ -1,15 +1,7 @@
 import type * as vscode from "vscode";
 import { readConfig } from "../config/config.js";
 import type { BufBearConfig } from "../config/types.js";
-
-function getVscode(): typeof vscode | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("vscode") as typeof vscode;
-  } catch {
-    return undefined;
-  }
-}
+import { getVscode } from "../platform/vscodeRef.js";
 
 export const FULL_PROTO_EXTENSIONS = [
   "bufbuild.vscode-buf",

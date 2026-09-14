@@ -4,15 +4,7 @@ import type { ClientManager } from "../lsp/clientManager.js";
 import type { RootServerStatus, ServerState } from "../lsp/serverState.js";
 import { readConfig } from "../config/config.js";
 import type { BufBearConfig } from "../config/types.js";
-
-function getVscode(): typeof vscode | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("vscode") as typeof vscode;
-  } catch {
-    return undefined;
-  }
-}
+import { getVscode } from "../platform/vscodeRef.js";
 
 const BUF_CONFIG_FILES = new Set([
   "buf.yaml",

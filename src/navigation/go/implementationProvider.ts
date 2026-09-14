@@ -4,15 +4,7 @@ import type { GoNavigationService, NavigationResult } from "./navigationService.
 import { findDeclarationAt, type ProtoDeclaration } from "./declaration.js";
 import { findBufRoot } from "../../lsp/rootDiscovery.js";
 import { readConfig } from "../../config/config.js";
-
-function getVscode(): typeof vscode | undefined {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("vscode") as typeof vscode;
-  } catch {
-    return undefined;
-  }
-}
+import { getVscode } from "../../platform/vscodeRef.js";
 
 export interface ResolutionDependencies {
   readonly navigation: GoNavigationService;
