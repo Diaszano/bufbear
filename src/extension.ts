@@ -25,7 +25,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const output = new Output();
   const navigation = new GoNavigationService();
 
-  registerWorkspaceWatchers(context, navigation, undefined, { api: vscode });
+  registerWorkspaceWatchers(context, navigation);
 
   const manager = new ClientManager({
     output,

@@ -2,24 +2,23 @@ import type * as vscode from "vscode";
 import { invalidateRootCache } from "../lsp/rootDiscovery.js";
 import type { GoNavigationService } from "../navigation/go/navigationService.js";
 import { readConfig } from "../config/config.js";
+import { getVscode } from "../platform/vscodeRef.js";
 
 export type WatcherFactory = (pattern: vscode.RelativePattern | vscode.GlobPattern) => vscode.FileSystemWatcher;
-export interface WorkspaceWatcherApi {
-  workspace: typeof vscode.workspace;
-  RelativePattern: typeof vscode.RelativePattern;
-  Disposable: typeof vscode.Disposable;
+export interface WorkspaceWatcherOptions {
+  invalidateRoots?: () => void;
+  vscode?: typeof vscode;
+  createWatcher?: WatcherFactory;
 }
-export interface WorkspaceWatcherOptions { invalidateRoots?: () => void; api?: WorkspaceWatcherApi; }
 
 export function registerWorkspaceWatchers(
   context: vscode.ExtensionContext,
   navigation: GoNavigationService,
-  createWatcher?: WatcherFactory,
   options: WorkspaceWatcherOptions = {}
 ): vscode.Disposable {
-  if (!options.api) throw new Error("Workspace watcher API is required");
-  const api = options.api;
-  const factory = createWatcher ?? ((pattern) => api.workspace.createFileSystemWatcher(pattern));
+  const api = options.vscode ?? getVscode();
+  if (!api) throw new Error("Workspace watcher API is required");
+  const factory = options.createWatcher ?? ((pattern) => api.workspace.createFileSystemWatcher(pattern));
   const watchers: vscode.Disposable[] = [];
   const subscriptions: vscode.Disposable[] = [];
 
