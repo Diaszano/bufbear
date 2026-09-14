@@ -10,8 +10,6 @@ export interface FormattingProviderDependencies {
   findRoot?: typeof findBufRoot;
   formatText?: typeof formatProtoText;
   readConfig?: typeof readConfig;
-  isTrusted?: () => boolean;
-  getWorkspaceFolder?: (uri: vscode.Uri) => string | undefined;
   writeLog?: (level: "info" | "warn" | "error", component: string, message: string, root?: string) => void;
   vscode?: typeof vscode;
 }
@@ -102,8 +100,7 @@ export class BufFormattingProvider
       return undefined;
     }
 
-    const isTrusted = this.#deps.isTrusted ? this.#deps.isTrusted() : vsc.workspace.isTrusted;
-    if (!isTrusted) {
+    if (!vsc.workspace.isTrusted) {
       return undefined;
     }
 
@@ -113,7 +110,7 @@ export class BufFormattingProvider
       return undefined;
     }
 
-    const workspaceFolder = this.getWorkspaceFolder(document.uri);
+    const workspaceFolder = vsc.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
     const finder = this.#deps.findRoot ?? findBufRoot;
     const bufRoot = await finder(document.uri.fsPath, workspaceFolder);
     if (token?.isCancellationRequested) {
@@ -156,14 +153,6 @@ export class BufFormattingProvider
 
   private resolveVscode(): typeof vscode | undefined {
     return this.#deps.vscode ?? getVscode();
-  }
-
-  private getWorkspaceFolder(uri: vscode.Uri): string | undefined {
-    if (this.#deps.getWorkspaceFolder) {
-      return this.#deps.getWorkspaceFolder(uri);
-    }
-    const vsc = this.resolveVscode();
-    return vsc?.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
   }
 
   private log(level: "info" | "warn" | "error", message: string, root?: string): void {

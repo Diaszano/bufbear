@@ -55,7 +55,6 @@ function createDeps(
     findRoot: () => Promise.resolve("/workspace"),
     formatText: () => Promise.resolve({ success: true, formattedText }),
     readConfig: () => createMockConfig(),
-    isTrusted: () => true,
     writeLog: noopLog,
     vscode: stubVscode,
     ...overrides
@@ -218,11 +217,58 @@ describe("BufFormattingProvider", () => {
       getText: () => 'syntax="proto3";'
     } as unknown as vscode.TextDocument;
 
-    const deps = createDeps('syntax = "proto3";\n', { isTrusted: () => false });
+    const untrustedVscode = {
+      ...stubVscode,
+      workspace: {
+        ...stubVscode.workspace,
+        isTrusted: false
+      }
+    } as unknown as typeof vscode;
+
+    const deps = createDeps('syntax = "proto3";\n', { vscode: untrustedVscode });
     const provider = new BufFormattingProvider(deps);
     const edits = await provider.provideDocumentFormattingEdits(document);
 
     assert.deepEqual(edits, []);
+  });
+
+  it("passes workspace folder to findRoot and uses it when bufRoot is undefined", async () => {
+    let passedWorkspaceFolder: string | undefined;
+    let receivedCwd: string | undefined;
+
+    const customVscode = {
+      ...stubVscode,
+      workspace: {
+        ...stubVscode.workspace,
+        getWorkspaceFolder: () => ({ uri: { fsPath: "/mock/workspace" } })
+      }
+    } as unknown as typeof vscode;
+
+    const deps = createDeps('syntax = "proto3";\n', {
+      vscode: customVscode,
+      findRoot: (_file, folder) => {
+        passedWorkspaceFolder = folder;
+        return Promise.resolve(undefined);
+      },
+      formatText: (options) => {
+        receivedCwd = options.cwd;
+        return Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' });
+      }
+    });
+
+    const document = {
+      uri: { fsPath: "/mock/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
+      getText: () => 'syntax="proto3";',
+      lineCount: 1,
+      lineAt: () => ({ range: { end: { character: 16 } } })
+    } as unknown as vscode.TextDocument;
+
+    const provider = new BufFormattingProvider(deps);
+    const edits = await provider.provideDocumentFormattingEdits(document);
+
+    assert.equal(edits.length, 1);
+    assert.equal(passedWorkspaceFolder, "/mock/workspace");
+    assert.equal(receivedCwd, "/mock/workspace");
   });
 
   it("returns empty edits silently for non-file URI schemes", async () => {
