@@ -107,6 +107,44 @@ describe("Commands", () => {
     assert.strictEqual(registered.size, 0);
   });
 
+  it("uses vscode.Disposable.from when available", () => {
+    let fromCalledWithCount = 0;
+    let disposedCount = 0;
+    const fakeManager = createFakeClientManager();
+    const fakeOutput = new FakeOutput();
+
+    const mockVscode = {
+      ...stubVscode,
+      Disposable: {
+        from: (...items: { dispose: () => unknown }[]) => {
+          fromCalledWithCount = items.length;
+          return {
+            dispose: () => {
+              for (const item of items) {
+                item.dispose();
+              }
+            }
+          };
+        }
+      }
+    } as unknown as typeof vscode;
+
+    const disposable = registerCommands({
+      clientManager: fakeManager,
+      output: fakeOutput,
+      vscode: mockVscode,
+      registerCommand: () => ({
+        dispose: () => {
+          disposedCount++;
+        }
+      })
+    });
+
+    assert.ok(fromCalledWithCount > 0, "Disposable.from should have been invoked");
+    disposable.dispose();
+    assert.strictEqual(disposedCount, fromCalledWithCount, "All registered command disposables should be disposed");
+  });
+
   it("restartServer command delegates to clientManager.restartForResource", async () => {
     const registered = new Map<string, (...args: unknown[]) => unknown>();
     const fakeManager = createFakeClientManager();

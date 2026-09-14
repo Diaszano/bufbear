@@ -346,6 +346,10 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
     })
   );
 
+  if (vsc?.Disposable) {
+    return vsc.Disposable.from(...disposables);
+  }
+
   return {
     dispose: () => {
       for (const d of disposables) {
