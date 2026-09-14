@@ -13,8 +13,8 @@ export interface ConflictDetectorDependencies {
   readonly readConfig?: (resource?: vscode.Uri) => BufBearConfig;
   readonly getExtension?: (id: string) => vscode.Extension<unknown> | undefined;
   readonly showWarningMessage?: (message: string, ...actions: string[]) => Promise<string | undefined>;
-  readonly executeCommand?: (command: string, ...rest: unknown[]) => Promise<unknown>;
   readonly updateConfig?: (section: string, value: unknown, target: unknown) => Promise<void>;
+  readonly extensions?: { readonly onDidChange: vscode.Event<unknown> };
 }
 
 let hasWarnedThisSession = false;
@@ -23,11 +23,7 @@ export function resetConflictWarningSession(): void {
   hasWarnedThisSession = false;
 }
 
-export interface ConflictChangeDependencies extends ConflictDetectorDependencies {
-  readonly extensions?: { readonly onDidChange: vscode.Event<unknown> };
-}
-
-export function subscribeToExtensionChanges(dependencies: ConflictChangeDependencies = {}): vscode.Disposable {
+export function subscribeToExtensionChanges(dependencies: ConflictDetectorDependencies = {}): vscode.Disposable {
   const vsc = getVscode();
   const onDidChange = dependencies.extensions?.onDidChange ?? vsc?.extensions.onDidChange;
 
@@ -72,7 +68,6 @@ export async function checkConflicts(dependencies: ConflictDetectorDependencies 
   const showWarn =
     dependencies.showWarningMessage ??
     ((msg: string, ...items: string[]) => vsc?.window.showWarningMessage(msg, ...items) ?? Promise.resolve(undefined));
-  const execCmd = dependencies.executeCommand ?? ((cmd: string, ...rest: unknown[]) => vsc?.commands.executeCommand(cmd, ...rest) ?? Promise.resolve());
 
   const message = `BufBear detected another active Protobuf extension (${activeConflicts.join(
     ", "
@@ -81,7 +76,7 @@ export async function checkConflicts(dependencies: ConflictDetectorDependencies 
   const action = await showWarn(message, "Open Extensions", "Disable BufBear LSP", "Ignore");
 
   if (action === "Open Extensions") {
-    await execCmd("workbench.extensions.action.showEnabledExtensions");
+    await vsc?.commands.executeCommand("workbench.extensions.action.showEnabledExtensions");
   } else if (action === "Disable BufBear LSP") {
     if (dependencies.updateConfig) {
       await dependencies.updateConfig("bufBear.lsp.enabled", false, 2 /* Workspace */);

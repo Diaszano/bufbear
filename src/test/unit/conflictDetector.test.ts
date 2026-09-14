@@ -4,7 +4,8 @@ import {
   checkConflicts,
   resetConflictWarningSession,
   subscribeToExtensionChanges,
-  FULL_PROTO_EXTENSIONS
+  FULL_PROTO_EXTENSIONS,
+  type ConflictDetectorDependencies
 } from "../../ui/conflictDetector.js";
 import type { BufBearConfig } from "../../config/types.js";
 
@@ -75,7 +76,7 @@ describe("ConflictDetector", () => {
       return Promise.resolve("Ignore");
     };
 
-    const dependencies = {
+    const dependencies: ConflictDetectorDependencies = {
       readConfig: () => createDefaultConfig(),
       getExtension: (id: string) => (id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
       showWarningMessage: fakeShowWarning
@@ -134,6 +135,14 @@ describe("ConflictDetector", () => {
       section: "bufBear.lsp.enabled",
       value: false,
       target: 2 // Workspace target
+    });
+  });
+
+  it("handles Open Extensions action cleanly without throwing", async () => {
+    await checkConflicts({
+      readConfig: () => createDefaultConfig(),
+      getExtension: (id) => (id === "bufbuild.vscode-buf" ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
+      showWarningMessage: async () => Promise.resolve("Open Extensions")
     });
   });
 
@@ -229,5 +238,10 @@ describe("ConflictDetector", () => {
     await settle();
 
     assert.strictEqual(warnCalled, false);
+  });
+
+  it("returns a no-op disposable when no onDidChange provider is available", () => {
+    const subscription = subscribeToExtensionChanges({});
+    assert.doesNotThrow(() => subscription.dispose());
   });
 });
