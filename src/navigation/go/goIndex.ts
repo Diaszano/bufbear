@@ -1,3 +1,4 @@
+import { maskComments } from "./declaration.js";
 import type { GoTarget } from "./fileMapping.js";
 
 export interface IndexedLocation {
@@ -34,72 +35,7 @@ function escapeRegExp(value: string): string {
  * re-running the byte-level scan for every symbol.
  */
 export function prepareGoLines(content: string): string[] {
-  return maskCommentsAndStrings(content).split(/\r?\n/u);
-}
-
-function maskCommentsAndStrings(text: string): string {
-  const buf = Buffer.from(text, "utf8");
-  const len = buf.length;
-  let state: "code" | "line-comment" | "block-comment" | "string" = "code";
-  let quoteChar = 0;
-
-  for (let i = 0; i < len; i++) {
-    const ch = buf[i];
-    const nextCh = i + 1 < len ? buf[i + 1] : 0;
-
-    if (state === "line-comment") {
-      if (ch === 10) {
-        state = "code";
-      } else {
-        buf[i] = 32;
-      }
-    } else if (state === "block-comment") {
-      if (ch === 42 && nextCh === 47) {
-        state = "code";
-        buf[i] = 32;
-        if (i + 1 < len) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch !== 10) {
-        buf[i] = 32;
-      }
-    } else if (state === "string") {
-      if (quoteChar !== 96 && ch === 92) {
-        buf[i] = 32;
-        if (i + 1 < len && buf[i + 1] !== 10) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch === quoteChar) {
-        state = "code";
-        quoteChar = 0;
-      } else if (ch !== 10) {
-        buf[i] = 32;
-      }
-    } else {
-      if (ch === 47 && nextCh === 47) {
-        state = "line-comment";
-        buf[i] = 32;
-        if (i + 1 < len) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch === 47 && nextCh === 42) {
-        state = "block-comment";
-        buf[i] = 32;
-        if (i + 1 < len) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch === 34 || ch === 39 || ch === 96) {
-        state = "string";
-        quoteChar = ch;
-      }
-    }
-  }
-
-  return buf.toString("utf8");
+  return maskComments(content).split(/\r?\n/u);
 }
 
 class GoIndexImpl implements GoIndex {
