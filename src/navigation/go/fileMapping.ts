@@ -20,33 +20,18 @@ function hasNul(text: string): boolean {
   return text.includes("\0");
 }
 
-function normalizePath(p: string): string {
-  return p.replace(/\\/g, "/");
-}
-
 export function isWithin(parent: string, candidate: string): boolean {
   if (hasNul(parent) || hasNul(candidate)) {
     return false;
   }
 
-  const parentDrive = /^[a-zA-Z]:/u.exec(parent)?.[0]?.toUpperCase() ?? /^[a-zA-Z]:/u.exec(normalizePath(parent))?.[0]?.toUpperCase();
-  const candidateDrive = /^[a-zA-Z]:/u.exec(candidate)?.[0]?.toUpperCase() ?? /^[a-zA-Z]:/u.exec(normalizePath(candidate))?.[0]?.toUpperCase();
-
-  if (parentDrive || candidateDrive) {
-    if (parentDrive !== candidateDrive) {
-      return false;
-    }
-  }
-
   const normParent = path.resolve(parent);
   const normCandidate = path.resolve(candidate);
 
-  const parentDriveResolved = /^[a-zA-Z]:/u.exec(normParent)?.[0]?.toUpperCase();
-  const candidateDriveResolved = /^[a-zA-Z]:/u.exec(normCandidate)?.[0]?.toUpperCase();
-  if (parentDriveResolved || candidateDriveResolved) {
-    if (parentDriveResolved !== candidateDriveResolved) {
-      return false;
-    }
+  const parentDrive = /^[a-zA-Z]:/u.exec(normParent)?.[0]?.toUpperCase();
+  const candidateDrive = /^[a-zA-Z]:/u.exec(normCandidate)?.[0]?.toUpperCase();
+  if (parentDrive !== candidateDrive) {
+    return false;
   }
 
   const relative = path.relative(normParent, normCandidate);
