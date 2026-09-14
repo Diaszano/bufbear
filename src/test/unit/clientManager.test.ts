@@ -4,6 +4,7 @@ import { createClientManager, type ClientManagerDependencies } from "../../lsp/c
 import type { BufProbe } from "../../lsp/bufExecutable.js";
 import type { BufBearConfig } from "../../config/types.js";
 import type { LanguageClient } from "vscode-languageclient/node";
+import type { RootServerStatus } from "../../lsp/serverState.js";
 
 class FakeOutput {
   public logs: { level: string; component: string; message: string; root?: string | undefined }[] = [];
@@ -340,7 +341,7 @@ describe("ClientManager", () => {
     }
   });
 
-  it("SimpleEventEmitter handles thisArgs and disposables parameter", () => {
+  it("status emitter handles thisArgs and disposables parameter, and listener unsubscription", async () => {
     const manager = createClientManager(createDeps());
     const received: string[] = [];
     const disposables: vscode.Disposable[] = [];
@@ -359,10 +360,42 @@ describe("ClientManager", () => {
 
     // Trigger status emission via ensureForDocument
     rootMap.set("/workspace/root/a.proto", "/workspace/root");
-    void manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+    await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+    assert.equal(received.length, 2);
 
     const disp = disposables[0];
     assert.ok(disp);
     disp.dispose();
+
+    await manager.stopAll();
+    assert.equal(received.length, 2);
+  });
+
+  it("allows injecting a custom EventEmitter", async () => {
+    let fired = false;
+    let disposed = false;
+    const customEmitter: vscode.EventEmitter<readonly RootServerStatus[]> = {
+      event: () => ({
+        dispose: () => {
+          disposed = true;
+        }
+      }),
+      fire: (statuses) => {
+        if (statuses.length > 0) {
+          fired = true;
+        }
+      },
+      dispose: () => {
+        disposed = true;
+      }
+    };
+
+    const manager = createClientManager(createDeps({ eventEmitter: customEmitter }));
+    rootMap.set("/workspace/root/a.proto", "/workspace/root");
+    await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+
+    assert.equal(fired, true);
+    customEmitter.dispose();
+    assert.equal(disposed, true);
   });
 });
