@@ -3,9 +3,8 @@ import { BoundedCache } from "../../platform/boundedCache.js";
 import type { ProtoDeclaration } from "./declaration.js";
 import { isWithin, mapToGeneratedGo } from "./fileMapping.js";
 import {
-  createGoIndex,
+  GoIndex,
   prepareGoLines,
-  type GoIndex,
   type IndexedLocation
 } from "./goIndex.js";
 
@@ -74,7 +73,7 @@ export class GoNavigationService {
 
   public constructor(options: GoNavigationServiceOptions = {}) {
     this.#fileSystem = options.fileSystem ?? defaultFileSystem;
-    this.#goIndex = options.goIndex ?? createGoIndex();
+    this.#goIndex = options.goIndex ?? new GoIndex();
     this.#onFileTooLarge = options.onFileTooLarge;
   }
 

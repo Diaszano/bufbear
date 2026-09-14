@@ -7,24 +7,6 @@ export interface IndexedLocation {
   readonly endCharacter: number;
 }
 
-export interface GoIndex {
-  find(
-    content: string,
-    target: GoTarget,
-    isCancelled?: () => boolean
-  ): IndexedLocation | undefined;
-  /**
-   * Same as {@link GoIndex.find}, but operates on pre-masked lines produced
-   * by {@link prepareGoLines} so callers can amortize masking across several
-   * symbol lookups against the same file version.
-   */
-  findInLines(
-    lines: readonly string[],
-    target: GoTarget,
-    isCancelled?: () => boolean
-  ): IndexedLocation | undefined;
-}
-
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
@@ -38,7 +20,7 @@ export function prepareGoLines(content: string): string[] {
   return maskComments(content).split(/\r?\n/u);
 }
 
-class GoIndexImpl implements GoIndex {
+export class GoIndex {
   public find(
     content: string,
     target: GoTarget,
@@ -47,6 +29,11 @@ class GoIndexImpl implements GoIndex {
     return this.findInLines(prepareGoLines(content), target, isCancelled);
   }
 
+  /**
+   * Same as {@link GoIndex.find}, but operates on pre-masked lines produced
+   * by {@link prepareGoLines} so callers can amortize masking across several
+   * symbol lookups against the same file version.
+   */
   public findInLines(
     lines: readonly string[],
     target: GoTarget,
@@ -182,8 +169,4 @@ class GoIndexImpl implements GoIndex {
 
     return undefined;
   }
-}
-
-export function createGoIndex(): GoIndex {
-  return new GoIndexImpl();
 }

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { performance } from "node:perf_hooks";
 import { findDeclarationAt } from "../../navigation/go/declaration.js";
-import { createGoIndex } from "../../navigation/go/goIndex.js";
+import { GoIndex } from "../../navigation/go/goIndex.js";
 import { GoNavigationService, type FileSystem } from "../../navigation/go/navigationService.js";
 
 describe("Navigation Performance & Cancellation", () => {
@@ -179,7 +179,7 @@ describe("Navigation Performance & Cancellation", () => {
   });
 
   it("directly tests goIndex cancellation after 128, 256, 512 scanned lines", () => {
-    const index = createGoIndex();
+    const index = new GoIndex();
     const goLines: string[] = ["package gen", ""];
     for (let i = 2; i < 2000; i++) {
       goLines.push(`// Line ${String(i)}`);

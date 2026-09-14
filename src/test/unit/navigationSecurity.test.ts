@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { findDeclarationAt } from "../../navigation/go/declaration.js";
 import { mapToGeneratedGo } from "../../navigation/go/fileMapping.js";
-import { createGoIndex } from "../../navigation/go/goIndex.js";
+import { GoIndex } from "../../navigation/go/goIndex.js";
 import { GoNavigationService, type FileSystem } from "../../navigation/go/navigationService.js";
 
 describe("Navigation Security", () => {
@@ -118,7 +118,7 @@ describe("Navigation Security", () => {
   });
 
   describe("Adversarial Symbol Names & Comment/String Isolation", () => {
-    const index = createGoIndex();
+    const index = new GoIndex();
 
     it("matches exact target symbol 'Book' and ignores 'Book2' and 'Book_Archive'", () => {
       const content = [

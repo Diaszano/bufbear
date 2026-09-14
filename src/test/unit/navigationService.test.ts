@@ -6,6 +6,7 @@ import {
   type FileSystem,
   type NavigationRequest
 } from "../../navigation/go/navigationService.js";
+import { GoIndex } from "../../navigation/go/goIndex.js";
 import type { ProtoDeclaration } from "../../navigation/go/declaration.js";
 
 const root = path.resolve("/workspace");
@@ -264,5 +265,19 @@ describe("GoNavigationService", () => {
     await assert.rejects(async () => {
       await service.find(createRequest());
     }, (err: Error & { code?: string }) => err.code === "EACCES");
+  });
+
+  it("uses custom GoIndex instance when provided", async () => {
+    const fs = new MockFileSystem();
+    const content = "package v1\n\ntype Book struct {}\n";
+    fs.files.set(generatedGoFile, { mtimeMs: 1000, size: content.length, content });
+
+    const customIndex = new GoIndex();
+    const service = new GoNavigationService({ fileSystem: fs, goIndex: customIndex });
+    const result = await service.find(createRequest());
+
+    assert(result);
+    assert.equal(result.filePath, generatedGoFile);
+    assert.equal(result.location.line, 2);
   });
 });
