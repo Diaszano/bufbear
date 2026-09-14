@@ -31,4 +31,17 @@ describe("RestartPolicy", () => {
     policy.reset();
     assert.equal(policy.recordFailure(2), 0);
   });
+
+  it("defaults to Date.now() when no timestamp is provided", () => {
+    const policy = new RestartPolicy();
+    assert.equal(policy.recordFailure(), 0);
+  });
+
+  it("supports custom windowMs and delay schedule", () => {
+    const policy = new RestartPolicy(1000, [50, 100]);
+    assert.equal(policy.recordFailure(0), 50);
+    assert.equal(policy.recordFailure(100), 100);
+    assert.equal(policy.recordFailure(200), undefined);
+    assert.equal(policy.recordFailure(1500), 50);
+  });
 });
