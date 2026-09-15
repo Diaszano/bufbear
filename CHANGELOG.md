@@ -1,3 +1,5 @@
+## [1.2.0-dev.1](https://github.com/Diaszano/bufbear/compare/v1.1.1-dev.2...v1.2.0-dev.1) (2026-09-15)
+
 ## [1.1.1-dev.2](https://github.com/Diaszano/bufbear/compare/v1.1.1-dev.1...v1.1.1-dev.2) (2026-07-25)
 
 ## [1.1.1-dev.1](https://github.com/Diaszano/bufbear/compare/v1.1.0...v1.1.1-dev.1) (2026-07-25)
