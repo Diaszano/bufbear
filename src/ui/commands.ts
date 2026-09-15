@@ -24,49 +24,28 @@ export interface CommandDependencies {
   readonly resolveGoImplementation?: typeof resolveGoImplementation;
   readonly probeBuf?: typeof probeBuf;
   readonly findRoot?: typeof findBufRoot;
-  readonly isTrusted?: () => boolean;
   readonly readConfig?: typeof readConfig;
-  readonly registerCommand?: (id: string, handler: (...args: unknown[]) => unknown) => vscode.Disposable;
-  readonly executeCommand?: (command: string, ...rest: unknown[]) => Promise<unknown>;
-  readonly showQuickPick?: (items: readonly QuickPickCommandItem[]) => Promise<QuickPickCommandItem | undefined>;
-  readonly showInformationMessage?: (message: string) => Promise<string | undefined>;
-  readonly showWarningMessage?: (message: string) => Promise<string | undefined>;
-  readonly showErrorMessage?: (message: string) => Promise<string | undefined>;
-  readonly getActiveTextEditor?: () => vscode.TextEditor | undefined;
-  readonly openTextDocument?: (uri: vscode.Uri) => Promise<vscode.TextDocument>;
-  readonly showTextDocument?: (
-    document: vscode.TextDocument,
-    options?: vscode.TextDocumentShowOptions
-  ) => Promise<vscode.TextEditor>;
   readonly formatProtoText?: typeof formatProtoText;
   readonly vscode?: typeof vscode;
 }
 
 export function registerCommands(dependencies: CommandDependencies): vscode.Disposable {
   const vsc = dependencies.vscode ?? getVscode();
-
-  const regCmd =
-    dependencies.registerCommand ??
-    ((id: string, handler: (...args: unknown[]) => unknown) => {
-      if (!vsc) {
-        throw new Error("registerCommand dependency required outside VS Code environment");
-      }
-      return vsc.commands.registerCommand(id, handler);
-    });
+  if (!vsc) {
+    throw new Error("VS Code API required outside VS Code environment");
+  }
 
   const disposables: vscode.Disposable[] = [];
-
-  const getEditor = dependencies.getActiveTextEditor ?? (() => vsc?.window.activeTextEditor);
   const readCfg = dependencies.readConfig ?? readConfig;
 
   // 1. bufBear.restartServer
   disposables.push(
-    regCmd("bufBear.restartServer", async (resourceArg?: unknown) => {
+    vsc.commands.registerCommand("bufBear.restartServer", async (resourceArg?: unknown) => {
       let resource: vscode.Uri | undefined;
       if (resourceArg && typeof resourceArg === "object" && "fsPath" in resourceArg) {
         resource = resourceArg as vscode.Uri;
       } else {
-        resource = getEditor()?.document.uri;
+        resource = vsc.window.activeTextEditor?.document.uri;
       }
       dependencies.output.write("info", "Commands", "Manual restart requested", resource?.fsPath);
       await dependencies.clientManager.restartForResource(resource, "manual restart");
@@ -75,27 +54,26 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
 
   // 2. bufBear.showOutput
   disposables.push(
-    regCmd("bufBear.showOutput", () => {
+    vsc.commands.registerCommand("bufBear.showOutput", () => {
       dependencies.output.show();
     })
   );
 
   // 3. bufBear.checkHealth
   disposables.push(
-    regCmd("bufBear.checkHealth", async (resourceArg?: unknown) => {
+    vsc.commands.registerCommand("bufBear.checkHealth", async (resourceArg?: unknown) => {
       let resource: vscode.Uri | undefined;
       if (resourceArg && typeof resourceArg === "object" && "fsPath" in resourceArg) {
         resource = resourceArg as vscode.Uri;
       } else {
-        resource = getEditor()?.document.uri;
+        resource = vsc.window.activeTextEditor?.document.uri;
       }
 
-      const isTrustedFn = dependencies.isTrusted ?? (() => vsc?.workspace.isTrusted ?? true);
-      const trusted = isTrustedFn() ? "yes" : "no";
+      const trusted = vsc.workspace.isTrusted ? "yes" : "no";
 
       let resourcePath = "<none>";
       if (resource) {
-        resourcePath = vsc ? vsc.workspace.asRelativePath(resource, false) : resource.fsPath;
+        resourcePath = vsc.workspace.asRelativePath(resource, false);
       }
 
       const config = readCfg(resource);
@@ -107,10 +85,10 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       if (resource) {
         // Bound the upward search to the resource's workspace folder so a
         // stray buf.yaml above the workspace cannot be picked up.
-        const boundary = vsc?.workspace.getWorkspaceFolder(resource)?.uri.fsPath;
+        const boundary = vsc.workspace.getWorkspaceFolder(resource)?.uri.fsPath;
         const foundRoot = await findRootFn(resource.fsPath, boundary);
         if (foundRoot) {
-          rootPath = vsc ? vsc.workspace.asRelativePath(vsc.Uri.file(foundRoot), false) : foundRoot;
+          rootPath = vsc.workspace.asRelativePath(vsc.Uri.file(foundRoot), false);
         }
       }
 
@@ -160,24 +138,18 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
 
   // 4. bufBear.openSettings
   disposables.push(
-    regCmd("bufBear.openSettings", async () => {
-      const execCmd =
-        dependencies.executeCommand ??
-        ((cmd: string, ...rest: unknown[]) => vsc?.commands.executeCommand(cmd, ...rest) ?? Promise.resolve());
-      await execCmd("workbench.action.openSettings", "@ext:diaszano.bufbear");
+    vsc.commands.registerCommand("bufBear.openSettings", async () => {
+      await vsc.commands.executeCommand("workbench.action.openSettings", "@ext:diaszano.bufbear");
     })
   );
 
   // 5. bufBear.goToGeneratedImplementation
   disposables.push(
-    regCmd("bufBear.goToGeneratedImplementation", async () => {
-      const showInfo =
-        dependencies.showInformationMessage ??
-        ((msg: string) => vsc?.window.showInformationMessage(msg) ?? Promise.resolve(undefined));
-      const editor = getEditor();
+    vsc.commands.registerCommand("bufBear.goToGeneratedImplementation", async () => {
+      const editor = vsc.window.activeTextEditor;
 
       if (!editor?.document.fileName.endsWith(".proto")) {
-        await showInfo("Place the cursor on a message, enum, service, or rpc declaration.");
+        await vsc.window.showInformationMessage("Place the cursor on a message, enum, service, or rpc declaration.");
         return;
       }
 
@@ -193,47 +165,33 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
           navigation,
           readConfig: dependencies.readConfig,
           findBufRoot: dependencies.findRoot,
-          isTrusted: dependencies.isTrusted
+          isTrusted: () => vsc.workspace.isTrusted
         }
       );
 
       if (res.status === "no_declaration") {
-        await showInfo("Place the cursor on a message, enum, service, or rpc declaration.");
+        await vsc.window.showInformationMessage("Place the cursor on a message, enum, service, or rpc declaration.");
         return;
       }
 
       if (res.status === "no_buf_root") {
-        await showInfo("No Buf module root was found.");
+        await vsc.window.showInformationMessage("No Buf module root was found.");
         return;
       }
 
       if (res.status !== "success") {
-        await showInfo("Generated Go file or symbol was not found. Run code generation or check bufBear.go.genRoot.");
+        await vsc.window.showInformationMessage(
+          "Generated Go file or symbol was not found. Run code generation or check bufBear.go.genRoot."
+        );
         return;
       }
 
-      const openDoc =
-        dependencies.openTextDocument ??
-        ((uri: vscode.Uri) => {
-          if (!vsc) throw new Error("openTextDocument required outside VS Code environment");
-          return vsc.workspace.openTextDocument(uri);
-        });
+      const targetUri = vsc.Uri.file(res.result.filePath);
+      const targetPos = new vsc.Position(res.result.location.line, res.result.location.startCharacter);
+      const targetRange = new vsc.Range(targetPos, targetPos);
 
-      const showDoc =
-        dependencies.showTextDocument ??
-        ((doc: vscode.TextDocument, options?: vscode.TextDocumentShowOptions) => {
-          if (!vsc) throw new Error("showTextDocument required outside VS Code environment");
-          return vsc.window.showTextDocument(doc, options);
-        });
-
-      const targetUri = vsc ? vsc.Uri.file(res.result.filePath) : ({ fsPath: res.result.filePath } as vscode.Uri);
-      const targetPos = vsc
-        ? new vsc.Position(res.result.location.line, res.result.location.startCharacter)
-        : ({ line: res.result.location.line, character: res.result.location.startCharacter } as vscode.Position);
-      const targetRange = vsc ? new vsc.Range(targetPos, targetPos) : (targetPos as unknown as vscode.Range);
-
-      const targetDoc = await openDoc(targetUri);
-      await showDoc(targetDoc, {
+      const targetDoc = await vsc.workspace.openTextDocument(targetUri);
+      await vsc.window.showTextDocument(targetDoc, {
         selection: targetRange,
         preview: true
       });
@@ -242,15 +200,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
 
   // 6. bufBear.showQuickPick
   disposables.push(
-    regCmd("bufBear.showQuickPick", async () => {
-      const showQP =
-        dependencies.showQuickPick ??
-        ((items: readonly QuickPickCommandItem[]) =>
-          vsc?.window.showQuickPick(items as unknown as vscode.QuickPickItem[]) as Promise<QuickPickCommandItem | undefined>);
-      const execCmd =
-        dependencies.executeCommand ??
-        ((cmd: string, ...rest: unknown[]) => vsc?.commands.executeCommand(cmd, ...rest) ?? Promise.resolve());
-
+    vsc.commands.registerCommand("bufBear.showQuickPick", async () => {
       const items: QuickPickCommandItem[] = [
         {
           label: "$(heart) Check Health",
@@ -274,38 +224,32 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
         }
       ];
 
-      const selected = await showQP(items);
+      const selected = (await vsc.window.showQuickPick(items as unknown as vscode.QuickPickItem[])) as
+        | QuickPickCommandItem
+        | undefined;
       if (selected?.command) {
-        await execCmd(selected.command);
+        await vsc.commands.executeCommand(selected.command);
       }
     })
   );
 
   // 7. bufBear.formatDocument
   disposables.push(
-    regCmd("bufBear.formatDocument", async () => {
-      const showInfo =
-        dependencies.showInformationMessage ??
-        ((msg: string) => vsc?.window.showInformationMessage(msg) ?? Promise.resolve(undefined));
-      const showWarn =
-        dependencies.showWarningMessage ??
-        ((msg: string) => vsc?.window.showWarningMessage(msg) ?? Promise.resolve(undefined));
-
-      const editor = getEditor();
+    vsc.commands.registerCommand("bufBear.formatDocument", async () => {
+      const editor = vsc.window.activeTextEditor;
       if (editor?.document.languageId !== "proto3") {
-        await showWarn("Active editor is not a Protobuf file.");
+        await vsc.window.showWarningMessage("Active editor is not a Protobuf file.");
         return;
       }
 
-      const isTrustedFn = dependencies.isTrusted ?? (() => vsc?.workspace.isTrusted ?? true);
-      if (!isTrustedFn()) {
-        await showInfo("BufBear document formatting is disabled in untrusted workspaces.");
+      if (!vsc.workspace.isTrusted) {
+        await vsc.window.showInformationMessage("BufBear document formatting is disabled in untrusted workspaces.");
         return;
       }
 
       const config = readCfg(editor.document.uri);
       if (!config.formattingEnabled) {
-        await showInfo(
+        await vsc.window.showInformationMessage(
           'BufBear document formatting is disabled. Set "bufBear.formatting.enabled": true in Settings to re-enable it.'
         );
         return;
@@ -313,7 +257,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
 
       const findRootFn = dependencies.findRoot ?? findBufRoot;
       const document = editor.document;
-      const workspaceFolder = vsc?.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
+      const workspaceFolder = vsc.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath;
       const bufRoot = await findRootFn(document.uri.fsPath, workspaceFolder);
       const cwd = bufRoot ?? workspaceFolder ?? path.dirname(document.uri.fsPath);
 
@@ -326,7 +270,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       });
 
       if (!result.success) {
-        await showWarn(`BufBear Formatting Error: ${result.error}`);
+        await vsc.window.showWarningMessage(`BufBear Formatting Error: ${result.error}`);
         return;
       }
 
@@ -337,24 +281,10 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       const lastLineIndex = Math.max(0, editor.document.lineCount - 1);
       const lastLine = editor.document.lineAt(lastLineIndex);
 
-      if (!vsc) {
-        return;
-      }
-
       const fullRange = new vsc.Range(new vsc.Position(0, 0), lastLine.range.end);
       await editor.edit((builder) => builder.replace(fullRange, result.formattedText));
     })
   );
 
-  if (vsc?.Disposable) {
-    return vsc.Disposable.from(...disposables);
-  }
-
-  return {
-    dispose: () => {
-      for (const d of disposables) {
-        d.dispose();
-      }
-    }
-  };
+  return vsc.Disposable.from(...disposables);
 }
