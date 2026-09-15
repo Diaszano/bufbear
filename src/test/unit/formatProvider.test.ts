@@ -150,21 +150,14 @@ describe("BufFormattingProvider", () => {
       createToken()
     );
 
-    assert.equal(edits.length, 2);
-    const firstEdit = edits[0];
-    const secondEdit = edits[1];
-    assert.ok(firstEdit);
-    assert.ok(secondEdit);
+    assert.equal(edits.length, 1);
+    const edit = edits[0];
+    assert.ok(edit);
     assert.deepEqual(
-      firstEdit.range,
-      new TestRange(new TestPosition(1, 0), new TestPosition(2, "  string b = 2;".length))
+      edit.range,
+      new TestRange(new TestPosition(1, 0), new TestPosition(5, "  int64  x = 1;".length))
     );
-    assert.equal(firstEdit.newText, "  string a = 1;  string b = 2;");
-    assert.deepEqual(
-      secondEdit.range,
-      new TestRange(new TestPosition(5, 0), new TestPosition(5, "  int64  x = 1;".length))
-    );
-    assert.equal(secondEdit.newText, "  int64 x = 1;");
+    assert.equal(edit.newText, "  string a = 1;  string b = 2;\n}\nmessage Bar {\n  int64 x = 1;");
   });
 
   it("returns empty edits when the document is already formatted", async () => {
