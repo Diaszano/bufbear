@@ -86,6 +86,10 @@
       {
         "command": "bufBear.formatDocument",
         "title": "BufBear: Format Document"
+      },
+      {
+        "command": "bufBear.showQuickPick",
+        "title": "BufBear: Show Quick Actions"
       }
     ],
     "configuration": {

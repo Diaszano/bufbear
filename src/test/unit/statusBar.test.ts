@@ -30,7 +30,7 @@ class FakeStatusBarItem implements vscode.StatusBarItem {
   }
 }
 
-class FakeClientManager implements ClientManager {
+class FakeClientManager {
   public currentStatuses: RootServerStatus[] = [];
   private listeners: ((statuses: readonly RootServerStatus[]) => void)[] = [];
 
@@ -78,21 +78,42 @@ class FakeClientManager implements ClientManager {
   }
 }
 
+function createFakeClientManager(): FakeClientManager & ClientManager {
+  return new FakeClientManager() as unknown as FakeClientManager & ClientManager;
+}
+
+function createFakeVscode(
+  item: vscode.StatusBarItem,
+  getActiveTextEditor: () => vscode.TextEditor | undefined,
+  isTrusted = true
+): typeof vscode {
+  return {
+    StatusBarAlignment: { Right: 2 },
+    window: {
+      createStatusBarItem: () => item,
+      get activeTextEditor() {
+        return getActiveTextEditor();
+      },
+      onDidChangeActiveTextEditor: () => ({ dispose: () => undefined })
+    },
+    workspace: { isTrusted }
+  } as unknown as typeof vscode;
+}
+
 describe("StatusBar", () => {
   it("hides status bar item when non-proto file is active", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "typescript",
             fileName: "/workspace/index.ts",
             uri: { fsPath: "/workspace/index.ts" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -103,19 +124,18 @@ describe("StatusBar", () => {
 
   it("shows $(sync~spin) BufBear for starting state on proto file", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "starting" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -127,19 +147,18 @@ describe("StatusBar", () => {
 
   it("shows $(check) BufBear for ready state", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -151,19 +170,18 @@ describe("StatusBar", () => {
 
   it("shows $(warning) BufBear for degraded state", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "degraded", detail: "Buf version outdated" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -175,19 +193,18 @@ describe("StatusBar", () => {
 
   it("shows $(error) BufBear for error state", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
     fakeManager.currentStatuses = [{ root: "/workspace", state: "error" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -199,11 +216,10 @@ describe("StatusBar", () => {
 
   it("shows $(circle-slash) BufBear when untrusted or disabled", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
@@ -211,8 +227,8 @@ describe("StatusBar", () => {
             uri: { fsPath: "/workspace/service.proto" }
           }
         } as unknown as vscode.TextEditor),
-      clientManager: fakeManager,
-      isTrusted: () => false
+        false),
+      clientManager: fakeManager
     });
 
     statusBar.update();
@@ -223,18 +239,17 @@ describe("StatusBar", () => {
 
   it("updates automatically when client status changes", () => {
     const fakeItem = new FakeStatusBarItem();
-    const fakeManager = new FakeClientManager();
+    const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -244,6 +259,110 @@ describe("StatusBar", () => {
     fakeManager.triggerStatusChange([{ root: "/workspace", state: "ready" }]);
     assert.strictEqual(fakeItem.text, "$(check) BufBear");
 
+    statusBar.dispose();
+  });
+
+  it("tooltip lists managed root path with its state", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = createFakeClientManager();
+    fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
+
+    const statusBar = new StatusBar({
+      vscode: createFakeVscode(fakeItem, () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/workspace/service.proto",
+            uri: { fsPath: "/workspace/service.proto" }
+          }
+        } as unknown as vscode.TextEditor)),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(
+      fakeItem.tooltip,
+      "BufBear: Ready (1 root)\n\nRoots:\n• /workspace — Ready"
+    );
+    statusBar.dispose();
+  });
+
+  it("tooltip lists every root and includes detail for degraded/error roots", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = createFakeClientManager();
+    fakeManager.currentStatuses = [
+      { root: "/ws/a", state: "ready" },
+      { root: "/ws/b", state: "error", detail: "buf CLI not found" }
+    ];
+
+    const statusBar = new StatusBar({
+      vscode: createFakeVscode(fakeItem, () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/ws/b/service.proto",
+            uri: { fsPath: "/ws/b/service.proto" }
+          }
+        } as unknown as vscode.TextEditor)),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(fakeItem.isVisible, true);
+    assert.strictEqual(
+      fakeItem.tooltip,
+      "BufBear: Error (2 roots)\n\nRoots:\n• /ws/a — Ready\n• /ws/b — Error: buf CLI not found"
+    );
+    statusBar.dispose();
+  });
+
+  it("tooltip shows degraded detail for the root matching the active document", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = createFakeClientManager();
+    fakeManager.currentStatuses = [
+      { root: "/workspace", state: "degraded", detail: "Buf version outdated" }
+    ];
+
+    const statusBar = new StatusBar({
+      vscode: createFakeVscode(fakeItem, () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/workspace/service.proto",
+            uri: { fsPath: "/workspace/service.proto" }
+          }
+        } as unknown as vscode.TextEditor)),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(
+      fakeItem.tooltip,
+      "BufBear: Degraded (1 root)\n\nRoots:\n• /workspace — Degraded: Buf version outdated"
+    );
+    statusBar.dispose();
+  });
+
+  it("tooltip keeps previous format when there are no managed roots", () => {
+    const fakeItem = new FakeStatusBarItem();
+    const fakeManager = createFakeClientManager();
+    fakeManager.currentStatuses = [];
+
+    const statusBar = new StatusBar({
+      vscode: createFakeVscode(fakeItem, () =>
+        ({
+          document: {
+            languageId: "proto3",
+            fileName: "/workspace/service.proto",
+            uri: { fsPath: "/workspace/service.proto" }
+          }
+        } as unknown as vscode.TextEditor)),
+      clientManager: fakeManager
+    });
+
+    statusBar.update();
+    assert.strictEqual(fakeItem.isVisible, true);
+    assert.strictEqual(fakeItem.tooltip, "BufBear: Disabled / Stopped");
     statusBar.dispose();
   });
 });

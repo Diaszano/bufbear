@@ -40,6 +40,35 @@ function makeToken(cancelled = false): vscode.CancellationToken {
   };
 }
 
+class MockPosition {
+  public constructor(public line: number, public character: number) {}
+}
+
+class MockRange {
+  public constructor(public start: MockPosition, public end: MockPosition) {}
+}
+
+class MockLocation {
+  public uri: vscode.Uri;
+  public range: MockRange;
+  public constructor(uri: vscode.Uri, rangeOrPosition: MockPosition | MockRange) {
+    this.uri = uri;
+    if ("line" in rangeOrPosition && "character" in rangeOrPosition) {
+      this.range = new MockRange(rangeOrPosition, rangeOrPosition);
+    } else {
+      this.range = rangeOrPosition;
+    }
+  }
+}
+
+const mockVscode = {
+  Position: MockPosition as unknown as typeof vscode.Position,
+  Location: MockLocation as unknown as typeof vscode.Location,
+  Uri: {
+    file: (pathStr: string): vscode.Uri => ({ fsPath: pathStr } as vscode.Uri)
+  }
+} as unknown as typeof vscode;
+
 describe("GeneratedGoImplementationProvider", () => {
   it("returns undefined when workspace is untrusted", async () => {
     const fakeOutput = new FakeOutput();
@@ -166,6 +195,7 @@ describe("GeneratedGoImplementationProvider", () => {
       navigation: dummyNav,
       output: fakeOutput,
       isTrusted: () => true,
+      vscode: mockVscode,
       readConfig: (): BufBearConfig => ({
         lspEnabled: true,
         bufPath: "buf",
@@ -196,6 +226,48 @@ describe("GeneratedGoImplementationProvider", () => {
     assert.strictEqual(location.uri.fsPath, "/workspace/gen/proto-go/user.pb.go");
     assert.strictEqual(location.range.start.line, 42);
     assert.strictEqual(location.range.start.character, 5);
+  });
+
+  it("returns undefined when vscode environment is not available", async () => {
+    const fakeOutput = new FakeOutput();
+    const dummyNav = {
+      find: async () => Promise.resolve({
+        filePath: "/workspace/gen/proto-go/user.pb.go",
+        location: { line: 42, startCharacter: 5, endCharacter: 17 }
+      })
+    } as unknown as GoNavigationService;
+
+    const provider = new GeneratedGoImplementationProvider({
+      navigation: dummyNav,
+      output: fakeOutput,
+      isTrusted: () => true,
+      readConfig: (): BufBearConfig => ({
+        lspEnabled: true,
+        bufPath: "buf",
+        traceServer: "off",
+        missingBufNotification: true,
+        goEnabled: true,
+        goGenRoot: "gen/proto-go",
+        goSourceRelative: true,
+        conflictWarningEnabled: true,
+        formattingEnabled: true
+      }),
+      findDeclarationAt: (): ProtoDeclaration => ({
+        kind: "message",
+        name: "UserResponse",
+        line: 0,
+        startCharacter: 8,
+        endCharacter: 20
+      }),
+      getWorkspaceFolder: () => ({ uri: { fsPath: "/workspace" } as vscode.Uri, name: "workspace", index: 0 }),
+      findBufRoot: async () => Promise.resolve("/workspace")
+    });
+
+    const doc = makeDoc("message UserResponse {}");
+    const pos = { line: 0, character: 9 } as vscode.Position;
+    const location = await provider.provideImplementation(doc, pos, makeToken());
+
+    assert.strictEqual(location, undefined);
   });
 
   it("logs error and returns undefined when resolution throws unexpected error", async () => {

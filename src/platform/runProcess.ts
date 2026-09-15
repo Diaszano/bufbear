@@ -64,8 +64,14 @@ export function runProcess(
     }
 
     if (options.stdin !== undefined) {
-      child.stdin.write(options.stdin);
-      child.stdin.end();
+      // If the child exits before consuming stdin (e.g. early validation
+      // failure), writing surfaces EPIPE. Without an error handler the
+      // stream emits an uncaught 'error' event that can take down the
+      // extension host, so swallow it and let the exit code decide.
+      child.stdin.on("error", () => {
+        // Intentionally ignored; process outcome is reported via close/error.
+      });
+      child.stdin.end(options.stdin);
     }
 
     let stdoutBytes = 0;

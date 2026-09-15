@@ -87,8 +87,8 @@ describe("rootDiscovery", () => {
     const cached = await findBufRoot(protoFile, tempDir);
     assert.equal(cached, tempDir);
 
-    // Invalidate single directory or all
-    invalidateRootCache(subDir);
+    // Invalidate cache
+    invalidateRootCache();
     const fresh = await findBufRoot(protoFile, tempDir);
     assert.equal(fresh, subDir);
   });
@@ -101,13 +101,13 @@ describe("rootDiscovery", () => {
     await fs.writeFile(file, "syntax = \"proto3\";");
     assert.equal(await findBufRoot(file, root), root);
     await fs.writeFile(path.join(nested, "buf.yaml"), "version: v1\n");
-    invalidateRootCache(nested);
+    invalidateRootCache();
     assert.equal(await findBufRoot(file, root), nested);
     await fs.writeFile(path.join(nested, "buf.yaml"), "version: v2\n");
-    invalidateRootCache(nested);
+    invalidateRootCache();
     assert.equal(await findBufRoot(file, root), nested);
     await fs.rm(path.join(nested, "buf.yaml"));
-    invalidateRootCache(nested);
+    invalidateRootCache();
     assert.equal(await findBufRoot(file, root), root);
   });
 

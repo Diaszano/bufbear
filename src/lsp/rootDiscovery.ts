@@ -4,7 +4,7 @@ import { BoundedCache } from "../platform/boundedCache.js";
 
 const rootCache = new BoundedCache<string, string | null>(512);
 
-export function invalidateRootCache(_directory?: string): void {
+export function invalidateRootCache(): void {
   rootCache.clear();
 }
 

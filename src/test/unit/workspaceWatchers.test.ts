@@ -5,7 +5,6 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import type * as vscode from "vscode";
-import type { WorkspaceWatcherApi } from "../../ui/workspaceWatchers.js";
 import type { GoNavigationService } from "../../navigation/go/navigationService.js";
 
 class Emitter<T> {
@@ -25,10 +24,16 @@ function harness(useRootOverride = true) {
   const folderChanges = new Emitter<unknown>(); const configChanges = new Emitter<unknown>();
   const created: Watcher[] = [];
   const invalidated: string[] = []; const roots: number[] = [];
-  const api = { workspace: { workspaceFolders: folders, createFileSystemWatcher: () => { const w = new Watcher(); created.push(w); return w; }, onDidChangeWorkspaceFolders: folderChanges.event, onDidChangeConfiguration: configChanges.event }, RelativePattern: class { constructor(public folder: unknown, public pattern: string) {} }, Disposable } as unknown as WorkspaceWatcherApi;
+  const api = { workspace: { workspaceFolders: folders, createFileSystemWatcher: () => { const w = new Watcher(); created.push(w); return w; }, onDidChangeWorkspaceFolders: folderChanges.event, onDidChangeConfiguration: configChanges.event }, RelativePattern: class { constructor(public folder: unknown, public pattern: string) {} }, Disposable };
   const context = { subscriptions: [] as vscode.Disposable[] } as unknown as vscode.ExtensionContext;
   const navigation = { invalidate: (p: string) => invalidated.push(p) } as unknown as GoNavigationService;
-  const registration = registerWorkspaceWatchers(context, navigation, undefined, useRootOverride ? { api, invalidateRoots: () => roots.push(1) } : { api });
+  const registration = registerWorkspaceWatchers(
+    context,
+    navigation,
+    useRootOverride
+      ? { vscode: api as unknown as typeof vscode, invalidateRoots: () => roots.push(1) }
+      : { vscode: api as unknown as typeof vscode }
+  );
   return { created, folderChanges, configChanges, registration, roots, invalidated, context };
 }
 

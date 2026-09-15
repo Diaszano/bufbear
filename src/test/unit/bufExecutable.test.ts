@@ -1,16 +1,25 @@
 import assert from "node:assert/strict";
 import { probeBuf } from "../../lsp/bufExecutable.js";
-import type { ProcessRequest, ProcessResult } from "../../platform/processRunner.js";
+import type { RunProcessResult } from "../../platform/runProcess.js";
 
 describe("probeBuf", () => {
   it("parses trimmed version and detects LSP support when lsp serve succeeds", async () => {
-    const calls: ProcessRequest[] = [];
-    const mockRunner = (req: ProcessRequest): Promise<ProcessResult> => {
-      calls.push(req);
-      if (req.args.includes("--version")) {
+    interface RunnerCall {
+      executable: string;
+      args: readonly string[];
+      options?: { timeoutMs?: number } | undefined;
+    }
+    const calls: RunnerCall[] = [];
+    const mockRunner = (
+      executable: string,
+      args: readonly string[],
+      options?: { timeoutMs?: number }
+    ): Promise<RunProcessResult> => {
+      calls.push({ executable, args, options });
+      if (args.includes("--version")) {
         return Promise.resolve({ stdout: "1.30.0\n", stderr: "", exitCode: 0, signal: null, timedOut: false });
       }
-      if (req.args.includes("lsp") && req.args.includes("serve")) {
+      if (args.includes("lsp") && args.includes("serve")) {
         return Promise.resolve({ stdout: "Usage: buf lsp serve...", stderr: "", exitCode: 0, signal: null, timedOut: false });
       }
       return Promise.resolve({ stdout: "", stderr: "", exitCode: 1, signal: null, timedOut: false });
@@ -22,13 +31,16 @@ describe("probeBuf", () => {
     assert.equal(result.version, "1.30.0");
     assert.equal(result.supportsLsp, true);
     assert.equal(calls.length, 2);
-    assert.equal(calls[0]?.timeoutMs, 5000);
-    assert.equal(calls[1]?.timeoutMs, 5000);
+    assert.equal(calls[0]?.options?.timeoutMs, 5000);
+    assert.equal(calls[1]?.options?.timeoutMs, 5000);
   });
 
   it("returns supportsLsp: false when lsp serve command fails", async () => {
-    const mockRunner = (req: ProcessRequest): Promise<ProcessResult> => {
-      if (req.args.includes("--version")) {
+    const mockRunner = (
+      _executable: string,
+      args: readonly string[]
+    ): Promise<RunProcessResult> => {
+      if (args.includes("--version")) {
         return Promise.resolve({ stdout: "1.0.0\n", stderr: "", exitCode: 0, signal: null, timedOut: false });
       }
       return Promise.resolve({ stdout: "unknown command", stderr: "error", exitCode: 1, signal: null, timedOut: false });
@@ -42,8 +54,11 @@ describe("probeBuf", () => {
   });
 
   it("returns supportsLsp: false when lsp serve command times out", async () => {
-    const mockRunner = (req: ProcessRequest): Promise<ProcessResult> => {
-      if (req.args.includes("--version")) {
+    const mockRunner = (
+      _executable: string,
+      args: readonly string[]
+    ): Promise<RunProcessResult> => {
+      if (args.includes("--version")) {
         return Promise.resolve({ stdout: "1.25.0\n", stderr: "", exitCode: 0, signal: null, timedOut: false });
       }
       return Promise.resolve({ stdout: "", stderr: "", exitCode: null, signal: "SIGTERM", timedOut: true });
@@ -55,7 +70,7 @@ describe("probeBuf", () => {
   });
 
   it("throws error when version probe fails", async () => {
-    const mockRunner = (): Promise<ProcessResult> => {
+    const mockRunner = (): Promise<RunProcessResult> => {
       return Promise.resolve({ stdout: "", stderr: "command not found", exitCode: 127, signal: null, timedOut: false });
     };
 
@@ -66,7 +81,7 @@ describe("probeBuf", () => {
   });
 
   it("throws error when version probe times out", async () => {
-    const mockRunner = (): Promise<ProcessResult> => {
+    const mockRunner = (): Promise<RunProcessResult> => {
       return Promise.resolve({ stdout: "", stderr: "", exitCode: null, signal: "SIGTERM", timedOut: true });
     };
 
@@ -77,7 +92,7 @@ describe("probeBuf", () => {
   });
 
   it("rejects empty or invalid executable strings", async () => {
-    const dummyRunner = (): Promise<ProcessResult> => {
+    const dummyRunner = (): Promise<RunProcessResult> => {
       return Promise.resolve({ stdout: "1.0.0", stderr: "", exitCode: 0, signal: null, timedOut: false });
     };
 

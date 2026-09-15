@@ -1,4 +1,4 @@
-import { runProcess, type ProcessResult } from "../platform/processRunner.js";
+import { runProcess, type RunProcessResult } from "../platform/runProcess.js";
 
 export interface BufProbe {
   readonly executable: string;
@@ -6,11 +6,11 @@ export interface BufProbe {
   readonly supportsLsp: boolean;
 }
 
-type Runner = (request: {
-  executable: string;
-  args: readonly string[];
-  timeoutMs: number;
-}) => Promise<ProcessResult>;
+type Runner = (
+  executable: string,
+  args: readonly string[],
+  options?: { timeoutMs?: number }
+) => Promise<RunProcessResult>;
 
 export async function probeBuf(
   executable: string,
@@ -20,20 +20,12 @@ export async function probeBuf(
     throw new Error("Buf executable must be a non-empty path or command name");
   }
 
-  const version = await runner({
-    executable,
-    args: ["--version"],
-    timeoutMs: 5000
-  });
+  const version = await runner(executable, ["--version"], { timeoutMs: 5000 });
   if (version.exitCode !== 0 || version.timedOut) {
     throw new Error("Buf version probe failed");
   }
 
-  const lsp = await runner({
-    executable,
-    args: ["lsp", "serve", "--help"],
-    timeoutMs: 5000
-  });
+  const lsp = await runner(executable, ["lsp", "serve", "--help"], { timeoutMs: 5000 });
 
   return {
     executable,

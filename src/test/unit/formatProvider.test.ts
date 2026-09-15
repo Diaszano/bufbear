@@ -47,6 +47,46 @@ const noopLog = (): void => {
   /* noop */
 };
 
+function createDeps(
+  formattedText: string,
+  overrides: Partial<FormattingProviderDependencies> = {}
+): FormattingProviderDependencies {
+  return {
+    findRoot: () => Promise.resolve("/workspace"),
+    formatText: () => Promise.resolve({ success: true, formattedText }),
+    readConfig: () => createMockConfig(),
+    writeLog: noopLog,
+    vscode: stubVscode,
+    ...overrides
+  };
+}
+
+function createMockDocument(text: string): vscode.TextDocument {
+  const lines = text.split("\n");
+  return {
+    uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
+    getText: () => text,
+    lineCount: lines.length,
+    lineAt: (index: number) => {
+      const lineText = lines[index] ?? "";
+      // Mirror the real API: lineAt().range is a Range with Position endpoints.
+      return {
+        range: new TestRange(new TestPosition(index, 0), new TestPosition(index, lineText.length))
+      };
+    }
+  } as unknown as vscode.TextDocument;
+}
+
+function createRange(startLine: number, startCharacter: number, endLine: number, endCharacter: number): vscode.Range {
+  return new TestRange(new TestPosition(startLine, startCharacter), new TestPosition(endLine, endCharacter)) as unknown as vscode.Range;
+}
+
+const noOptions = {} as vscode.FormattingOptions;
+
+function createToken(cancelled = false): vscode.CancellationToken {
+  return { isCancellationRequested: cancelled } as unknown as vscode.CancellationToken;
+}
+
 describe("BufFormattingProvider", () => {
   it("returns TextEdit replacing full document when format succeeds", async () => {
     const document = {
@@ -56,16 +96,7 @@ describe("BufFormattingProvider", () => {
       lineAt: () => ({ range: { end: { character: 16 } } })
     } as unknown as vscode.TextDocument;
 
-    const deps: FormattingProviderDependencies = {
-      findRoot: () => Promise.resolve("/workspace"),
-      formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
-      readConfig: () => createMockConfig(),
-      isTrusted: () => true,
-      writeLog: noopLog,
-      vscode: stubVscode
-    };
-
-    const provider = new BufFormattingProvider(deps);
+    const provider = new BufFormattingProvider(createDeps('syntax = "proto3";\n'));
     const edits = await provider.provideDocumentFormattingEdits(document);
 
     assert.ok(edits);
@@ -73,28 +104,89 @@ describe("BufFormattingProvider", () => {
     assert.equal(edits[0]?.newText, 'syntax = "proto3";\n');
   });
 
-  it("returns empty edits on range formatting request", async () => {
-    const document = {
-      uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
-      getText: () => 'syntax="proto3";',
-      lineCount: 1,
-      lineAt: () => ({ range: { end: { character: 16 } } })
-    } as unknown as vscode.TextDocument;
+  it("returns one whole-line edit when the selection intersects a single changed line", async () => {
+    const original = 'syntax = "proto3";\npackage   foo.v1;\nmessage Foo {\n}\n';
+    const formatted = 'syntax = "proto3";\npackage foo.v1;\nmessage Foo {\n}\n';
+    const provider = new BufFormattingProvider(createDeps(formatted));
 
-    const deps: FormattingProviderDependencies = {
-      findRoot: () => Promise.resolve("/workspace"),
-      formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
-      readConfig: () => createMockConfig(),
-      isTrusted: () => true,
-      writeLog: noopLog,
-      vscode: stubVscode
-    };
+    const edits = await provider.provideDocumentRangeFormattingEdits(
+      createMockDocument(original),
+      createRange(1, 0, 1, 17),
+      noOptions,
+      createToken()
+    );
 
-    const provider = new BufFormattingProvider(deps);
-    const edits = await provider.provideDocumentRangeFormattingEdits(document);
+    assert.deepEqual(edits, [
+      new TestTextEdit(new TestRange(new TestPosition(1, 0), new TestPosition(1, 17)), "package foo.v1;")
+    ]);
+  });
 
-    assert.ok(edits);
-    assert.equal(edits.length, 0);
+  it("returns empty edits when changes fall outside the requested range", async () => {
+    const original = 'syntax = "proto3";\npackage foo.v1;\nmessage Foo {\n  string  name = 1;\n}\n';
+    const formatted = 'syntax = "proto3";\npackage foo.v1;\nmessage Foo {\n  string name = 1;\n}\n';
+    const provider = new BufFormattingProvider(createDeps(formatted));
+
+    const edits = await provider.provideDocumentRangeFormattingEdits(
+      createMockDocument(original),
+      createRange(0, 0, 1, 18),
+      noOptions,
+      createToken()
+    );
+
+    assert.deepEqual(edits, []);
+  });
+
+  it("expands multiline reflows crossing the range border to whole-line edits", async () => {
+    const original =
+      "message Foo {\n  string a = 1;\n  string b = 2;\n}\nmessage Bar {\n  int64  x = 1;\n}\n";
+    const formatted =
+      "message Foo {\n  string a = 1;  string b = 2;\n}\nmessage Bar {\n  int64 x = 1;\n}\n";
+    const provider = new BufFormattingProvider(createDeps(formatted));
+
+    const edits = await provider.provideDocumentRangeFormattingEdits(
+      createMockDocument(original),
+      createRange(2, 0, 5, 3),
+      noOptions,
+      createToken()
+    );
+
+    assert.equal(edits.length, 1);
+    const edit = edits[0];
+    assert.ok(edit);
+    assert.deepEqual(
+      edit.range,
+      new TestRange(new TestPosition(1, 0), new TestPosition(5, "  int64  x = 1;".length))
+    );
+    assert.equal(edit.newText, "  string a = 1;  string b = 2;\n}\nmessage Bar {\n  int64 x = 1;");
+  });
+
+  it("returns empty edits when the document is already formatted", async () => {
+    const text = 'syntax = "proto3";\npackage foo.v1;\nmessage Foo {\n}\n';
+    const provider = new BufFormattingProvider(createDeps(text));
+
+    const edits = await provider.provideDocumentRangeFormattingEdits(
+      createMockDocument(text),
+      createRange(0, 0, 4, 0),
+      noOptions,
+      createToken()
+    );
+
+    assert.deepEqual(edits, []);
+  });
+
+  it("returns empty edits when the cancellation token is already cancelled", async () => {
+    const original = 'syntax="proto3";\nmessage Foo{\n}\n';
+    const formatted = 'syntax = "proto3";\nmessage Foo {\n}\n';
+    const provider = new BufFormattingProvider(createDeps(formatted));
+
+    const edits = await provider.provideDocumentRangeFormattingEdits(
+      createMockDocument(original),
+      createRange(0, 0, 2, 1),
+      noOptions,
+      createToken(true)
+    );
+
+    assert.deepEqual(edits, []);
   });
 
   it("returns empty edits silently when formatting is disabled in config", async () => {
@@ -103,15 +195,9 @@ describe("BufFormattingProvider", () => {
       getText: () => 'syntax="proto3";'
     } as unknown as vscode.TextDocument;
 
-    const deps: FormattingProviderDependencies = {
-      findRoot: () => Promise.resolve("/workspace"),
-      formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
-      readConfig: () => createMockConfig({ formattingEnabled: false }),
-      isTrusted: () => true,
-      writeLog: noopLog,
-      vscode: stubVscode
-    };
-
+    const deps = createDeps('syntax = "proto3";\n', {
+      readConfig: () => createMockConfig({ formattingEnabled: false })
+    });
     const provider = new BufFormattingProvider(deps);
     const edits = await provider.provideDocumentFormattingEdits(document);
 
@@ -124,19 +210,58 @@ describe("BufFormattingProvider", () => {
       getText: () => 'syntax="proto3";'
     } as unknown as vscode.TextDocument;
 
-    const deps: FormattingProviderDependencies = {
-      findRoot: () => Promise.resolve("/workspace"),
-      formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
-      readConfig: () => createMockConfig(),
-      isTrusted: () => false,
-      writeLog: noopLog,
-      vscode: stubVscode
-    };
+    const untrustedVscode = {
+      ...stubVscode,
+      workspace: {
+        ...stubVscode.workspace,
+        isTrusted: false
+      }
+    } as unknown as typeof vscode;
 
+    const deps = createDeps('syntax = "proto3";\n', { vscode: untrustedVscode });
     const provider = new BufFormattingProvider(deps);
     const edits = await provider.provideDocumentFormattingEdits(document);
 
     assert.deepEqual(edits, []);
+  });
+
+  it("passes workspace folder to findRoot and uses it when bufRoot is undefined", async () => {
+    let passedWorkspaceFolder: string | undefined;
+    let receivedCwd: string | undefined;
+
+    const customVscode = {
+      ...stubVscode,
+      workspace: {
+        ...stubVscode.workspace,
+        getWorkspaceFolder: () => ({ uri: { fsPath: "/mock/workspace" } })
+      }
+    } as unknown as typeof vscode;
+
+    const deps = createDeps('syntax = "proto3";\n', {
+      vscode: customVscode,
+      findRoot: (_file, folder) => {
+        passedWorkspaceFolder = folder;
+        return Promise.resolve(undefined);
+      },
+      formatText: (options) => {
+        receivedCwd = options.cwd;
+        return Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' });
+      }
+    });
+
+    const document = {
+      uri: { fsPath: "/mock/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
+      getText: () => 'syntax="proto3";',
+      lineCount: 1,
+      lineAt: () => ({ range: { end: { character: 16 } } })
+    } as unknown as vscode.TextDocument;
+
+    const provider = new BufFormattingProvider(deps);
+    const edits = await provider.provideDocumentFormattingEdits(document);
+
+    assert.equal(edits.length, 1);
+    assert.equal(passedWorkspaceFolder, "/mock/workspace");
+    assert.equal(receivedCwd, "/mock/workspace");
   });
 
   it("returns empty edits silently for non-file URI schemes", async () => {
@@ -145,16 +270,7 @@ describe("BufFormattingProvider", () => {
       getText: () => 'syntax="proto3";'
     } as unknown as vscode.TextDocument;
 
-    const deps: FormattingProviderDependencies = {
-      findRoot: () => Promise.resolve("/workspace"),
-      formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
-      readConfig: () => createMockConfig(),
-      isTrusted: () => true,
-      writeLog: noopLog,
-      vscode: stubVscode
-    };
-
-    const provider = new BufFormattingProvider(deps);
+    const provider = new BufFormattingProvider(createDeps('syntax = "proto3";\n'));
     const edits = await provider.provideDocumentFormattingEdits(document);
 
     assert.deepEqual(edits, []);
@@ -167,16 +283,12 @@ describe("BufFormattingProvider", () => {
     } as unknown as vscode.TextDocument;
 
     const logs: { level: "info" | "warn" | "error"; component: string; message: string; root?: string | undefined }[] = [];
-    const deps: FormattingProviderDependencies = {
-      findRoot: () => Promise.resolve("/workspace"),
+    const deps = createDeps("", {
       formatText: () => Promise.resolve({ success: false, error: "Syntax error" }),
-      readConfig: () => createMockConfig(),
-      isTrusted: () => true,
       writeLog: (level: "info" | "warn" | "error", component: string, message: string, root?: string) => {
         logs.push({ level, component, message, root });
-      },
-      vscode: stubVscode
-    };
+      }
+    });
 
     const provider = new BufFormattingProvider(deps);
     const edits = await provider.provideDocumentFormattingEdits(document);
@@ -198,16 +310,7 @@ describe("BufFormattingProvider", () => {
       lineAt: () => ({ range: { end: { character: 18 } } })
     } as unknown as vscode.TextDocument;
 
-    const deps: FormattingProviderDependencies = {
-      findRoot: () => Promise.resolve("/workspace"),
-      formatText: () => Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' }),
-      readConfig: () => createMockConfig(),
-      isTrusted: () => true,
-      writeLog: noopLog,
-      vscode: stubVscode
-    };
-
-    const provider = new BufFormattingProvider(deps);
+    const provider = new BufFormattingProvider(createDeps('syntax = "proto3";\n'));
     const edits = await provider.provideDocumentFormattingEdits(document);
 
     assert.deepEqual(edits, []);

@@ -9,15 +9,8 @@ import type { Output } from "../platform/output.js";
 import type { RootServerStatus, ServerState } from "./serverState.js";
 import type { readConfig } from "../config/config.js";
 import type { BufBearConfig } from "../config/types.js";
+import { getVscode } from "../platform/vscodeRef.js";
 
-export interface ClientManager {
-  ensureForDocument(document: vscode.TextDocument): Promise<void>;
-  restartForResource(resource?: vscode.Uri, reason?: string): Promise<void>;
-  stopForRoot(root: string): Promise<void>;
-  stopAll(): Promise<void>;
-  statuses(): readonly RootServerStatus[];
-  onDidChangeStatus: vscode.Event<readonly RootServerStatus[]>;
-}
 
 export interface ClientManagerDependencies {
   readonly output: Pick<Output, "write" | "show" | "dispose">;
@@ -28,41 +21,30 @@ export interface ClientManagerDependencies {
   readonly getWorkspaceFolder?: (uri: vscode.Uri) => string | undefined;
   readonly readConfig?: typeof readConfig;
   readonly showNotification?: (message: string, ...actions: string[]) => Promise<string | undefined>;
+  readonly eventEmitter?: vscode.EventEmitter<readonly RootServerStatus[]>;
 }
 
-class SimpleEventEmitter<T> {
-  private listeners: ((e: T) => void)[] = [];
-
-  public readonly event: vscode.Event<T> = (
-    listener: (e: T) => void,
-    thisArgs?: unknown,
-    disposables?: { dispose(): void }[] | vscode.Disposable[]
-  ): vscode.Disposable => {
-    const boundListener = thisArgs ? (e: T) => listener.call(thisArgs, e) : listener;
-    this.listeners.push(boundListener);
-    const subscription: vscode.Disposable = {
-      dispose: () => {
-        const idx = this.listeners.indexOf(boundListener);
-        if (idx >= 0) {
-          this.listeners.splice(idx, 1);
-        }
-      }
-    };
-    if (Array.isArray(disposables)) {
-      disposables.push(subscription);
-    }
-    return subscription;
+function createStatusEmitter(): vscode.EventEmitter<readonly RootServerStatus[]> {
+  const vsc = getVscode();
+  if (vsc) {
+    return new vsc.EventEmitter<readonly RootServerStatus[]>();
+  }
+  const listeners = new Set<(e: readonly RootServerStatus[]) => void>();
+  return {
+    event: (listener, thisArgs, disposables) => {
+      const bound = (e: readonly RootServerStatus[]): void => {
+        void (thisArgs ? listener.call(thisArgs, e) : listener(e));
+      };
+      listeners.add(bound);
+      const disposable: vscode.Disposable = { dispose: () => listeners.delete(bound) };
+      if (Array.isArray(disposables)) disposables.push(disposable);
+      return disposable;
+    },
+    fire: (data) => {
+      for (const l of [...listeners]) l(data);
+    },
+    dispose: () => listeners.clear()
   };
-
-  public fire(data: T): void {
-    for (const listener of [...this.listeners]) {
-      listener(data);
-    }
-  }
-
-  public dispose(): void {
-    this.listeners = [];
-  }
 }
 
 interface ManagedRootClient {
@@ -85,25 +67,20 @@ function normalizeRootKey(rootPath: string): string {
 }
 
 function makeFileUri(filePath: string): vscode.Uri {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const vscodeModule = require("vscode") as typeof vscode;
-    return vscodeModule.Uri.file(filePath);
-  } catch {
-    // ignore outside vscode extension host
-  }
-  return { fsPath: filePath, scheme: "file" } as unknown as vscode.Uri;
+  const vsc = getVscode();
+  return vsc ? vsc.Uri.file(filePath) : ({ fsPath: filePath, scheme: "file" } as unknown as vscode.Uri);
 }
 
-export class DefaultClientManager implements ClientManager {
+export class ClientManager {
   readonly #deps: ClientManagerDependencies;
   readonly #clients = new Map<string, ManagedRootClient>();
   readonly #startupPromises = new Map<string, Promise<void>>();
-  readonly #statusEmitter = new SimpleEventEmitter<readonly RootServerStatus[]>();
+  readonly #statusEmitter: vscode.EventEmitter<readonly RootServerStatus[]>;
   readonly #notifiedMissingBuf = new Set<string>();
 
   public constructor(dependencies: ClientManagerDependencies) {
     this.#deps = dependencies;
+    this.#statusEmitter = dependencies.eventEmitter ?? createStatusEmitter();
   }
 
   public get onDidChangeStatus(): vscode.Event<readonly RootServerStatus[]> {
@@ -307,14 +284,7 @@ export class DefaultClientManager implements ClientManager {
     if (this.#deps.getWorkspaceFolder) {
       return this.#deps.getWorkspaceFolder(uri);
     }
-    try {
-      // Lazy load vscode in extension runtime
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const vscodeModule = require("vscode") as typeof vscode;
-      return vscodeModule.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
-    } catch {
-      return undefined;
-    }
+    return getVscode()?.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
   }
 
   private async notifyMissingBuf(msg: string): Promise<void> {
@@ -322,13 +292,7 @@ export class DefaultClientManager implements ClientManager {
       await this.#deps.showNotification(msg, "Learn More");
       return;
     }
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const vscodeModule = require("vscode") as typeof vscode;
-      await vscodeModule.window.showInformationMessage(msg, "Learn More");
-    } catch {
-      // Ignore if outside vscode
-    }
+    await getVscode()?.window.showInformationMessage(msg, "Learn More");
   }
 
   private emitStatuses(): void {
@@ -515,8 +479,4 @@ export class DefaultClientManager implements ClientManager {
       }, delay);
     }
   }
-}
-
-export function createClientManager(dependencies: ClientManagerDependencies): ClientManager {
-  return new DefaultClientManager(dependencies);
 }

@@ -1,18 +1,23 @@
 import * as vscode from "vscode";
 import { Output } from "./platform/output.js";
-import { DefaultClientManager } from "./lsp/clientManager.js";
+import { ClientManager } from "./lsp/clientManager.js";
 import { createLanguageClient } from "./lsp/clientFactory.js";
 import { probeBuf } from "./lsp/bufExecutable.js";
 import { findBufRoot } from "./lsp/rootDiscovery.js";
 import { StatusBar, isBufOrProtoDocument } from "./ui/statusBar.js";
 import { registerCommands } from "./ui/commands.js";
-import { checkConflicts } from "./ui/conflictDetector.js";
+import { checkConflicts, subscribeToExtensionChanges } from "./ui/conflictDetector.js";
 import { GoNavigationService } from "./navigation/go/navigationService.js";
 import { GeneratedGoImplementationProvider } from "./navigation/go/implementationProvider.js";
 import { BufFormattingProvider } from "./formatting/formatProvider.js";
 import { BufLintCodeActionProvider } from "./ui/codeActions.js";
-
 import { registerWorkspaceWatchers } from "./ui/workspaceWatchers.js";
+
+const LSP_RESTART_SETTINGS = [
+  "bufBear.buf.path",
+  "bufBear.lsp.enabled",
+  "bufBear.buf.trace.server"
+] as const;
 
 let shutdown: (() => Promise<void>) | undefined;
 
@@ -20,9 +25,9 @@ export function activate(context: vscode.ExtensionContext): void {
   const output = new Output();
   const navigation = new GoNavigationService();
 
-  registerWorkspaceWatchers(context, navigation, undefined, { api: vscode });
+  registerWorkspaceWatchers(context, navigation);
 
-  const manager = new DefaultClientManager({
+  const manager = new ClientManager({
     output,
     createClient: createLanguageClient,
     probeBuf,
@@ -97,7 +102,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("bufBear")) {
+      if (LSP_RESTART_SETTINGS.some((setting) => e.affectsConfiguration(setting))) {
         const activeDoc = vscode.window.activeTextEditor?.document;
         void manager.restartForResource(activeDoc?.uri, "configuration changed");
         statusBar.update();
@@ -119,6 +124,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   void checkConflicts();
+  context.subscriptions.push(subscribeToExtensionChanges());
 
   for (const editor of vscode.window.visibleTextEditors) {
     if (isBufOrProtoDocument(editor.document)) {

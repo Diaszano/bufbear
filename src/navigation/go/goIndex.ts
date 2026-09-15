@@ -1,3 +1,4 @@
+import { maskComments } from "./declaration.js";
 import type { GoTarget } from "./fileMapping.js";
 
 export interface IndexedLocation {
@@ -6,86 +7,35 @@ export interface IndexedLocation {
   readonly endCharacter: number;
 }
 
-export interface GoIndex {
-  find(
-    content: string,
-    target: GoTarget,
-    isCancelled?: () => boolean
-  ): IndexedLocation | undefined;
-}
-
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
-function maskCommentsAndStrings(text: string): string {
-  const buf = Buffer.from(text, "utf8");
-  const len = buf.length;
-  let state: "code" | "line-comment" | "block-comment" | "string" = "code";
-  let quoteChar = 0;
-
-  for (let i = 0; i < len; i++) {
-    const ch = buf[i];
-    const nextCh = i + 1 < len ? buf[i + 1] : 0;
-
-    if (state === "line-comment") {
-      if (ch === 10) {
-        state = "code";
-      } else {
-        buf[i] = 32;
-      }
-    } else if (state === "block-comment") {
-      if (ch === 42 && nextCh === 47) {
-        state = "code";
-        buf[i] = 32;
-        if (i + 1 < len) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch !== 10) {
-        buf[i] = 32;
-      }
-    } else if (state === "string") {
-      if (quoteChar !== 96 && ch === 92) {
-        buf[i] = 32;
-        if (i + 1 < len && buf[i + 1] !== 10) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch === quoteChar) {
-        state = "code";
-        quoteChar = 0;
-      } else if (ch !== 10) {
-        buf[i] = 32;
-      }
-    } else {
-      if (ch === 47 && nextCh === 47) {
-        state = "line-comment";
-        buf[i] = 32;
-        if (i + 1 < len) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch === 47 && nextCh === 42) {
-        state = "block-comment";
-        buf[i] = 32;
-        if (i + 1 < len) {
-          buf[i + 1] = 32;
-        }
-        i++;
-      } else if (ch === 34 || ch === 39 || ch === 96) {
-        state = "string";
-        quoteChar = ch;
-      }
-    }
-  }
-
-  return buf.toString("utf8");
+/**
+ * Masks comments and string literals and splits into lines once per file
+ * version. Callers should reuse the result for repeated lookups instead of
+ * re-running the byte-level scan for every symbol.
+ */
+export function prepareGoLines(content: string): string[] {
+  return maskComments(content).split(/\r?\n/u);
 }
 
-class GoIndexImpl implements GoIndex {
-  find(
+export class GoIndex {
+  public find(
     content: string,
+    target: GoTarget,
+    isCancelled?: () => boolean
+  ): IndexedLocation | undefined {
+    return this.findInLines(prepareGoLines(content), target, isCancelled);
+  }
+
+  /**
+   * Same as {@link GoIndex.find}, but operates on pre-masked lines produced
+   * by {@link prepareGoLines} so callers can amortize masking across several
+   * symbol lookups against the same file version.
+   */
+  public findInLines(
+    lines: readonly string[],
     target: GoTarget,
     isCancelled?: () => boolean
   ): IndexedLocation | undefined {
@@ -93,8 +43,6 @@ class GoIndexImpl implements GoIndex {
       return undefined;
     }
 
-    const maskedContent = maskCommentsAndStrings(content);
-    const lines = maskedContent.split(/\r?\n/u);
     const escapedSymbol = escapeRegExp(target.symbolName);
 
     switch (target.kind) {
@@ -221,8 +169,4 @@ class GoIndexImpl implements GoIndex {
 
     return undefined;
   }
-}
-
-export function createGoIndex(): GoIndex {
-  return new GoIndexImpl();
 }

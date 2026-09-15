@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import type * as vscode from "vscode";
-import { createClientManager, type ClientManagerDependencies } from "../../lsp/clientManager.js";
+import { ClientManager, type ClientManagerDependencies } from "../../lsp/clientManager.js";
 import type { BufProbe } from "../../lsp/bufExecutable.js";
 import type { BufBearConfig } from "../../config/types.js";
 import type { LanguageClient } from "vscode-languageclient/node";
+import type { RootServerStatus } from "../../lsp/serverState.js";
 
 class FakeOutput {
   public logs: { level: string; component: string; message: string; root?: string | undefined }[] = [];
@@ -129,7 +130,7 @@ describe("ClientManager", () => {
     rootMap.set("/workspace/root/a.proto", "/workspace/root");
     rootMap.set("/workspace/root/b.proto", "/workspace/root");
 
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
 
     await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
     await manager.ensureForDocument(makeDoc("/workspace/root/b.proto"));
@@ -143,7 +144,7 @@ describe("ClientManager", () => {
     rootMap.set("/workspace/repoA/a.proto", "/workspace/repoA");
     rootMap.set("/workspace/repoB/b.proto", "/workspace/repoB");
 
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
 
     await manager.ensureForDocument(makeDoc("/workspace/repoA/a.proto"));
     await manager.ensureForDocument(makeDoc("/workspace/repoB/b.proto"));
@@ -155,7 +156,7 @@ describe("ClientManager", () => {
   it("does not create a client when LSP is disabled in configuration", async () => {
     config = createDefaultConfig({ lspEnabled: false });
 
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
     await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
 
     assert.equal(createdClients.length, 0);
@@ -165,7 +166,7 @@ describe("ClientManager", () => {
   it("does not create a client when workspace is untrusted", async () => {
     isTrustedValue = false;
 
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
     await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
 
     assert.equal(createdClients.length, 0);
@@ -176,7 +177,7 @@ describe("ClientManager", () => {
     rootMap.set("/workspace/repoA/a.proto", "/workspace/repoA");
     rootMap.set("/workspace/repoB/b.proto", "/workspace/repoB");
 
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
 
     await manager.ensureForDocument(makeDoc("/workspace/repoA/a.proto"));
     await manager.ensureForDocument(makeDoc("/workspace/repoB/b.proto"));
@@ -198,7 +199,7 @@ describe("ClientManager", () => {
     rootMap.set("/workspace/repoA/a.proto", "/workspace/repoA");
     rootMap.set("/workspace/repoB/b.proto", "/workspace/repoB");
 
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
 
     await manager.ensureForDocument(makeDoc("/workspace/repoA/a.proto"));
     await manager.ensureForDocument(makeDoc("/workspace/repoB/b.proto"));
@@ -226,7 +227,7 @@ describe("ClientManager", () => {
       })
     });
 
-    const manager = createClientManager(deps);
+    const manager = new ClientManager(deps);
 
     await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
 
@@ -241,7 +242,7 @@ describe("ClientManager", () => {
   });
 
   it("stops automatic retries after restart policy is exhausted", async () => {
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
 
     await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
     assert.equal(createdClients.length, 1);
@@ -275,7 +276,7 @@ describe("ClientManager", () => {
       }
     });
 
-    const manager = createClientManager(deps);
+    const manager = new ClientManager(deps);
 
     const docA = makeDoc("/workspace/root/a.proto");
     const docB = makeDoc("/workspace/root/b.proto");
@@ -292,7 +293,7 @@ describe("ClientManager", () => {
 
   it("stops existing client and returns when untrusted or disabled on restartForResource", async () => {
     rootMap.set("/workspace/root/a.proto", "/workspace/root");
-    const manager = createClientManager(createDeps());
+    const manager = new ClientManager(createDeps());
 
     await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
     assert.equal(createdClients.length, 1);
@@ -324,7 +325,7 @@ describe("ClientManager", () => {
       }
     });
 
-    const manager = createClientManager(deps);
+    const manager = new ClientManager(deps);
     const startPromise = manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
 
     // Allow ensureForDocument to pass async getConfig and enter probeBuf
@@ -340,8 +341,8 @@ describe("ClientManager", () => {
     }
   });
 
-  it("SimpleEventEmitter handles thisArgs and disposables parameter", () => {
-    const manager = createClientManager(createDeps());
+  it("status emitter handles thisArgs and disposables parameter, and listener unsubscription", async () => {
+    const manager = new ClientManager(createDeps());
     const received: string[] = [];
     const disposables: vscode.Disposable[] = [];
 
@@ -359,10 +360,42 @@ describe("ClientManager", () => {
 
     // Trigger status emission via ensureForDocument
     rootMap.set("/workspace/root/a.proto", "/workspace/root");
-    void manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+    await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+    assert.equal(received.length, 2);
 
     const disp = disposables[0];
     assert.ok(disp);
     disp.dispose();
+
+    await manager.stopAll();
+    assert.equal(received.length, 2);
+  });
+
+  it("allows injecting a custom EventEmitter", async () => {
+    let fired = false;
+    let disposed = false;
+    const customEmitter: vscode.EventEmitter<readonly RootServerStatus[]> = {
+      event: () => ({
+        dispose: () => {
+          disposed = true;
+        }
+      }),
+      fire: (statuses) => {
+        if (statuses.length > 0) {
+          fired = true;
+        }
+      },
+      dispose: () => {
+        disposed = true;
+      }
+    };
+
+    const manager = new ClientManager(createDeps({ eventEmitter: customEmitter }));
+    rootMap.set("/workspace/root/a.proto", "/workspace/root");
+    await manager.ensureForDocument(makeDoc("/workspace/root/a.proto"));
+
+    assert.equal(fired, true);
+    customEmitter.dispose();
+    assert.equal(disposed, true);
   });
 });
