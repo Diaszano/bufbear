@@ -82,21 +82,38 @@ function createFakeClientManager(): FakeClientManager & ClientManager {
   return new FakeClientManager() as unknown as FakeClientManager & ClientManager;
 }
 
+function createFakeVscode(
+  item: vscode.StatusBarItem,
+  getActiveTextEditor: () => vscode.TextEditor | undefined,
+  isTrusted = true
+): typeof vscode {
+  return {
+    StatusBarAlignment: { Right: 2 },
+    window: {
+      createStatusBarItem: () => item,
+      get activeTextEditor() {
+        return getActiveTextEditor();
+      },
+      onDidChangeActiveTextEditor: () => ({ dispose: () => undefined })
+    },
+    workspace: { isTrusted }
+  } as unknown as typeof vscode;
+}
+
 describe("StatusBar", () => {
   it("hides status bar item when non-proto file is active", () => {
     const fakeItem = new FakeStatusBarItem();
     const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "typescript",
             fileName: "/workspace/index.ts",
             uri: { fsPath: "/workspace/index.ts" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -111,15 +128,14 @@ describe("StatusBar", () => {
     fakeManager.currentStatuses = [{ root: "/workspace", state: "starting" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -135,15 +151,14 @@ describe("StatusBar", () => {
     fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -159,15 +174,14 @@ describe("StatusBar", () => {
     fakeManager.currentStatuses = [{ root: "/workspace", state: "degraded", detail: "Buf version outdated" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -183,15 +197,14 @@ describe("StatusBar", () => {
     fakeManager.currentStatuses = [{ root: "/workspace", state: "error" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -206,8 +219,7 @@ describe("StatusBar", () => {
     const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
@@ -215,8 +227,8 @@ describe("StatusBar", () => {
             uri: { fsPath: "/workspace/service.proto" }
           }
         } as unknown as vscode.TextEditor),
-      clientManager: fakeManager,
-      isTrusted: () => false
+        false),
+      clientManager: fakeManager
     });
 
     statusBar.update();
@@ -230,15 +242,14 @@ describe("StatusBar", () => {
     const fakeManager = createFakeClientManager();
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -257,15 +268,14 @@ describe("StatusBar", () => {
     fakeManager.currentStatuses = [{ root: "/workspace", state: "ready" }];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -286,15 +296,14 @@ describe("StatusBar", () => {
     ];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/ws/b/service.proto",
             uri: { fsPath: "/ws/b/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -315,15 +324,14 @@ describe("StatusBar", () => {
     ];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 
@@ -341,15 +349,14 @@ describe("StatusBar", () => {
     fakeManager.currentStatuses = [];
 
     const statusBar = new StatusBar({
-      createStatusBarItem: () => fakeItem,
-      getActiveTextEditor: () =>
+      vscode: createFakeVscode(fakeItem, () =>
         ({
           document: {
             languageId: "proto3",
             fileName: "/workspace/service.proto",
             uri: { fsPath: "/workspace/service.proto" }
           }
-        } as unknown as vscode.TextEditor),
+        } as unknown as vscode.TextEditor)),
       clientManager: fakeManager
     });
 

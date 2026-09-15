@@ -3,7 +3,6 @@ import type * as vscode from "vscode";
 import type { ClientManager } from "../lsp/clientManager.js";
 import type { RootServerStatus, ServerState } from "../lsp/serverState.js";
 import { readConfig } from "../config/config.js";
-import type { BufBearConfig } from "../config/types.js";
 import { getVscode } from "../platform/vscodeRef.js";
 
 const BUF_CONFIG_FILES = new Set([
@@ -30,11 +29,7 @@ export function isBufOrProtoDocument(document?: vscode.TextDocument): boolean {
 
 export interface StatusBarDependencies {
   readonly clientManager: ClientManager;
-  readonly createStatusBarItem?: () => vscode.StatusBarItem;
-  readonly getActiveTextEditor?: () => vscode.TextEditor | undefined;
-  readonly onDidChangeActiveTextEditor?: vscode.Event<vscode.TextEditor | undefined>;
-  readonly isTrusted?: () => boolean;
-  readonly readConfig?: (resource?: vscode.Uri) => BufBearConfig;
+  readonly vscode?: typeof vscode;
 }
 
 interface StatePresentation {
@@ -76,34 +71,24 @@ export class StatusBar implements vscode.Disposable {
   public constructor(dependencies: StatusBarDependencies) {
     this.#deps = dependencies;
 
-    const vsc = getVscode();
-
-    if (dependencies.createStatusBarItem) {
-      this.#item = dependencies.createStatusBarItem();
-    } else if (vsc) {
-      this.#item = vsc.window.createStatusBarItem(vsc.StatusBarAlignment.Right, 100);
-    } else {
-      throw new Error("createStatusBarItem dependency required outside VS Code environment");
+    const vsc = dependencies.vscode ?? getVscode();
+    if (!vsc) {
+      throw new Error("VS Code API required outside VS Code environment");
     }
+    this.#item = vsc.window.createStatusBarItem(vsc.StatusBarAlignment.Right, 100);
 
     this.#item.command = "bufBear.showQuickPick";
     this.#item.name = "BufBear Status";
 
-    const onEditorChange =
-      dependencies.onDidChangeActiveTextEditor ??
-      vsc?.window.onDidChangeActiveTextEditor ??
-      (() => ({ dispose: () => { /* no-op */ } }));
-
-    this.#disposables.push(onEditorChange(() => this.update()));
+    this.#disposables.push(vsc.window.onDidChangeActiveTextEditor(() => this.update()));
     this.#disposables.push(dependencies.clientManager.onDidChangeStatus(() => this.update()));
 
     this.update();
   }
 
   public update(): void {
-    const vsc = getVscode();
-    const getEditor = this.#deps.getActiveTextEditor ?? (() => vsc?.window.activeTextEditor);
-    const editor = getEditor();
+    const vsc = this.#deps.vscode ?? getVscode();
+    const editor = vsc?.window.activeTextEditor;
     const document = editor?.document;
 
     if (!isBufOrProtoDocument(document)) {
@@ -111,11 +96,9 @@ export class StatusBar implements vscode.Disposable {
       return;
     }
 
-    const isTrustedFn = this.#deps.isTrusted ?? (() => vsc?.workspace.isTrusted ?? true);
-    const trusted = isTrustedFn();
+    const trusted = vsc?.workspace.isTrusted ?? true;
 
-    const readCfgFn = this.#deps.readConfig ?? readConfig;
-    const config = readCfgFn(document?.uri);
+    const config = readConfig(document?.uri);
 
     if (!trusted || !config.lspEnabled) {
       this.render("stopped", "LSP untrusted or disabled", []);
