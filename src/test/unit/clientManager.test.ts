@@ -34,7 +34,7 @@ class FakeLanguageClient {
       dispose: () => {
         const idx = this.listeners.indexOf(listener);
         if (idx >= 0) this.listeners.splice(idx, 1);
-      }
+      },
     };
   }
 
@@ -68,14 +68,14 @@ function createDefaultConfig(overrides: Partial<BufBearConfig> = {}): BufBearCon
     goSourceRelative: true,
     conflictWarningEnabled: true,
     formattingEnabled: true,
-    ...overrides
+    ...overrides,
   };
 }
 
 function makeDoc(filePath: string, languageId = "proto3", scheme = "file"): vscode.TextDocument {
   return {
     uri: { fsPath: filePath, scheme } as vscode.Uri,
-    languageId
+    languageId,
   } as unknown as vscode.TextDocument;
 }
 
@@ -122,7 +122,7 @@ describe("ClientManager", () => {
         return Promise.resolve(undefined);
       },
       getWorkspaceFolder: () => "/workspace",
-      ...overrides
+      ...overrides,
     };
   }
 
@@ -220,11 +220,12 @@ describe("ClientManager", () => {
 
   it("handles a failed probe cleanly by transitioning to degraded state without unhandled rejection", async () => {
     const deps = createDeps({
-      probeBuf: (executable: string) => Promise.resolve({
-        executable,
-        version: "1.0.0",
-        supportsLsp: false
-      })
+      probeBuf: (executable: string) =>
+        Promise.resolve({
+          executable,
+          version: "1.0.0",
+          supportsLsp: false,
+        }),
     });
 
     const manager = new ClientManager(deps);
@@ -273,7 +274,7 @@ describe("ClientManager", () => {
         probeCalls.push(executable);
         await new Promise((resolve) => setTimeout(resolve, 20));
         return { executable, version: "1.30.0", supportsLsp: true } satisfies BufProbe;
-      }
+      },
     });
 
     const manager = new ClientManager(deps);
@@ -281,10 +282,7 @@ describe("ClientManager", () => {
     const docA = makeDoc("/workspace/root/a.proto");
     const docB = makeDoc("/workspace/root/b.proto");
 
-    await Promise.all([
-      manager.ensureForDocument(docA),
-      manager.ensureForDocument(docB)
-    ]);
+    await Promise.all([manager.ensureForDocument(docA), manager.ensureForDocument(docB)]);
 
     assert.equal(createdClients.length, 1);
     assert.equal(manager.statuses().length, 1);
@@ -322,7 +320,7 @@ describe("ClientManager", () => {
         probeCalls.push(executable);
         await new Promise((resolve) => setTimeout(resolve, 50));
         return { executable, version: "1.30.0", supportsLsp: true } satisfies BufProbe;
-      }
+      },
     });
 
     const manager = new ClientManager(deps);
@@ -353,7 +351,7 @@ describe("ClientManager", () => {
         received.push(this.tag);
       },
       context,
-      disposables
+      disposables,
     );
 
     assert.equal(disposables.length, 1);
@@ -378,7 +376,7 @@ describe("ClientManager", () => {
       event: () => ({
         dispose: () => {
           disposed = true;
-        }
+        },
       }),
       fire: (statuses) => {
         if (statuses.length > 0) {
@@ -387,7 +385,7 @@ describe("ClientManager", () => {
       },
       dispose: () => {
         disposed = true;
-      }
+      },
     };
 
     const manager = new ClientManager(createDeps({ eventEmitter: customEmitter }));

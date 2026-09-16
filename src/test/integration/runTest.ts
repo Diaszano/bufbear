@@ -15,7 +15,7 @@ async function main(): Promise<void> {
     const actualVersion = (probe?.stdout ?? "").toString().trim();
     if (probe?.error || probe?.status !== 0 || actualVersion !== requiredVersion) {
       throw new Error(
-        `Pinned Buf ${requiredVersion} is required; executable '${bufPath}' reported '${actualVersion || "unavailable"}'`
+        `Pinned Buf ${requiredVersion} is required; executable '${bufPath}' reported '${actualVersion || "unavailable"}'`,
       );
     }
     console.log(`Using Buf ${actualVersion} (required ${requiredVersion})`);
@@ -26,7 +26,7 @@ async function main(): Promise<void> {
     await runTests({
       extensionDevelopmentPath,
       extensionTestsPath,
-      launchArgs: [testWorkspace, "--disable-extensions"]
+      launchArgs: [testWorkspace, "--disable-extensions"],
     });
   } catch (err) {
     console.error("Failed to run integration tests:", err);

@@ -6,7 +6,7 @@ export class RestartPolicy {
 
   public constructor(
     private readonly windowMs: number = DEFAULT_WINDOW_MS,
-    private readonly delays: readonly number[] = DEFAULT_DELAYS
+    private readonly delays: readonly number[] = DEFAULT_DELAYS,
   ) {}
 
   public recordFailure(now: number = Date.now()): number | undefined {

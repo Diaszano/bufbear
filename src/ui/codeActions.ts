@@ -14,9 +14,9 @@ export class BufLintCodeActionProvider implements vscode.CodeActionProvider {
 
   public provideCodeActions(
     document: vscode.TextDocument,
-    range: vscode.Range | vscode.Selection,
+    _range: vscode.Range | vscode.Selection,
     context: vscode.CodeActionContext,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): vscode.ProviderResult<(vscode.Command | vscode.CodeAction)[]> {
     const vsc = this.#deps.vscode ?? getVscode();
     if (!vsc) {
@@ -43,10 +43,7 @@ export class BufLintCodeActionProvider implements vscode.CodeActionProvider {
         continue;
       }
 
-      const action = new vsc.CodeAction(
-        `Rename to "${suggestedName}"`,
-        vsc.CodeActionKind.QuickFix
-      );
+      const action = new vsc.CodeAction(`Rename to "${suggestedName}"`, vsc.CodeActionKind.QuickFix);
       action.edit = edit;
       action.diagnostics = [diagnostic];
       action.isPreferred = true;
@@ -62,7 +59,7 @@ export class BufLintCodeActionProvider implements vscode.CodeActionProvider {
     document: vscode.TextDocument,
     diagnostic: vscode.Diagnostic,
     incorrectName: string,
-    suggestedName: string
+    suggestedName: string,
   ): vscode.WorkspaceEdit | undefined {
     const range = diagnostic.range;
     const rangeText = document.getText(range);
@@ -79,10 +76,7 @@ export class BufLintCodeActionProvider implements vscode.CodeActionProvider {
     if (idx !== -1) {
       const startOffset = document.offsetAt(range.start) + idx;
       const endOffset = startOffset + incorrectName.length;
-      const exactRange = new vsc.Range(
-        document.positionAt(startOffset),
-        document.positionAt(endOffset)
-      );
+      const exactRange = new vsc.Range(document.positionAt(startOffset), document.positionAt(endOffset));
       const edit = new vsc.WorkspaceEdit();
       edit.replace(document.uri, exactRange, suggestedName);
       return edit;
@@ -95,7 +89,7 @@ export class BufLintCodeActionProvider implements vscode.CodeActionProvider {
     if (lineIdx !== -1) {
       const exactRange = new vsc.Range(
         new vsc.Position(startLine, lineIdx),
-        new vsc.Position(startLine, lineIdx + incorrectName.length)
+        new vsc.Position(startLine, lineIdx + incorrectName.length),
       );
       const edit = new vsc.WorkspaceEdit();
       edit.replace(document.uri, exactRange, suggestedName);

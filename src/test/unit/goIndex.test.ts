@@ -32,7 +32,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book.pb.go",
       symbolName: "Book",
-      kind: "message"
+      kind: "message",
     };
 
     const loc = index.find(sampleGoCode, target);
@@ -46,7 +46,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book.pb.go",
       symbolName: "Book",
-      kind: "message"
+      kind: "message",
     };
 
     const loc = index.find(sampleGoCode, target);
@@ -58,7 +58,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book.pb.go",
       symbolName: "BookState",
-      kind: "enum"
+      kind: "enum",
     };
 
     const loc = index.find(sampleGoCode, target);
@@ -72,7 +72,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book_grpc.pb.go",
       symbolName: "BookService",
-      kind: "service"
+      kind: "service",
     };
 
     const loc = index.find(sampleGoCode, target);
@@ -87,7 +87,7 @@ describe("GoIndex", () => {
       filePath: "/path/to/book_grpc.pb.go",
       symbolName: "CreateBook",
       kind: "rpc",
-      parentService: "BookService"
+      parentService: "BookService",
     };
 
     const loc = index.find(sampleGoCode, target);
@@ -102,7 +102,7 @@ describe("GoIndex", () => {
       filePath: "/path/to/book_grpc.pb.go",
       symbolName: "CreateBook",
       kind: "rpc",
-      parentService: "OtherService"
+      parentService: "OtherService",
     };
 
     const loc = index.find(sampleGoCode, target);
@@ -114,7 +114,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book.pb.go",
       symbolName: "Book",
-      kind: "message"
+      kind: "message",
     };
 
     const loc = index.find(crlfCode, target);
@@ -128,7 +128,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book.pb.go",
       symbolName: "Book",
-      kind: "message"
+      kind: "message",
     };
 
     const loc = index.find(sampleGoCode, target, () => true);
@@ -140,7 +140,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book.pb.go",
       symbolName: "NonExistent",
-      kind: "message"
+      kind: "message",
     };
 
     let checkCount = 0;
@@ -158,7 +158,7 @@ describe("GoIndex", () => {
     const target: GoTarget = {
       filePath: "/path/to/book.pb.go",
       symbolName: "Book$Special",
-      kind: "message"
+      kind: "message",
     };
 
     const loc = index.find(codeWithSpecialChars, target);

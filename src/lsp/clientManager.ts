@@ -11,7 +11,6 @@ import type { readConfig } from "../config/config.js";
 import type { BufBearConfig } from "../config/types.js";
 import { getVscode } from "../platform/vscodeRef.js";
 
-
 export interface ClientManagerDependencies {
   readonly output: Pick<Output, "write" | "show" | "dispose">;
   readonly createClient: typeof createLanguageClient;
@@ -43,7 +42,7 @@ function createStatusEmitter(): vscode.EventEmitter<readonly RootServerStatus[]>
     fire: (data) => {
       for (const l of [...listeners]) l(data);
     },
-    dispose: () => listeners.clear()
+    dispose: () => listeners.clear(),
   };
 }
 
@@ -91,7 +90,7 @@ export class ClientManager {
     return Array.from(this.#clients.values()).map((m) => ({
       root: m.root,
       state: m.state,
-      ...(m.detail ? { detail: m.detail } : {})
+      ...(m.detail ? { detail: m.detail } : {}),
     }));
   }
 
@@ -107,7 +106,12 @@ export class ClientManager {
     }
 
     if (!this.#deps.isTrusted()) {
-      this.#deps.output.write("warn", "ClientManager", "Workspace is untrusted; skipping LSP client creation", document.uri.fsPath);
+      this.#deps.output.write(
+        "warn",
+        "ClientManager",
+        "Workspace is untrusted; skipping LSP client creation",
+        document.uri.fsPath,
+      );
       return;
     }
 
@@ -139,14 +143,24 @@ export class ClientManager {
       const rootKey = normalizeRootKey(rootPath);
 
       if (!this.#deps.isTrusted()) {
-        this.#deps.output.write("warn", "ClientManager", "Workspace is untrusted; stopping client on restart", rootPath);
+        this.#deps.output.write(
+          "warn",
+          "ClientManager",
+          "Workspace is untrusted; stopping client on restart",
+          rootPath,
+        );
         await this.stopForRoot(rootKey);
         return;
       }
 
       const config = await this.getConfig(resource);
       if (!config.lspEnabled) {
-        this.#deps.output.write("info", "ClientManager", "LSP disabled in config; stopping client on restart", rootPath);
+        this.#deps.output.write(
+          "info",
+          "ClientManager",
+          "LSP disabled in config; stopping client on restart",
+          rootPath,
+        );
         await this.stopForRoot(rootKey);
         return;
       }
@@ -164,7 +178,7 @@ export class ClientManager {
       const existingClients = Array.from(this.#clients.values()).map((m) => ({
         rootKey: m.rootKey,
         root: m.root,
-        rootUri: m.rootUri
+        rootUri: m.rootUri,
       }));
 
       await this.stopAll();
@@ -217,7 +231,12 @@ export class ClientManager {
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           if (!msg.includes("can't be stopped") && !msg.includes("startFailed")) {
-            this.#deps.output.write("error", "ClientManager", `Error stopping client for root ${managedAfter.root}: ${msg}`, managedAfter.root);
+            this.#deps.output.write(
+              "error",
+              "ClientManager",
+              `Error stopping client for root ${managedAfter.root}: ${msg}`,
+              managedAfter.root,
+            );
           }
         }
       }
@@ -264,7 +283,7 @@ export class ClientManager {
           }
         }
         managed.state = "stopped";
-      })
+      }),
     );
 
     this.#clients.clear();
@@ -303,7 +322,12 @@ export class ClientManager {
     return managed.isStopping;
   }
 
-  private async startRoot(rootKey: string, rootPath: string, resource: vscode.Uri, config: BufBearConfig): Promise<void> {
+  private async startRoot(
+    rootKey: string,
+    rootPath: string,
+    resource: vscode.Uri,
+    config: BufBearConfig,
+  ): Promise<void> {
     const pending = this.#startupPromises.get(rootKey);
     if (pending) {
       return pending;
@@ -321,7 +345,7 @@ export class ClientManager {
           restartPolicy: new RestartPolicy(),
           restartTimer: undefined,
           isStopping: false,
-          disposables: []
+          disposables: [],
         };
         this.#clients.set(rootKey, managed);
       } else {
@@ -342,7 +366,12 @@ export class ClientManager {
       try {
         probeResult = await this.#deps.probeBuf(config.bufPath);
       } catch (err) {
-        this.#deps.output.write("warn", "ClientManager", `Buf probe failed: ${err instanceof Error ? err.message : String(err)}`, rootPath);
+        this.#deps.output.write(
+          "warn",
+          "ClientManager",
+          `Buf probe failed: ${err instanceof Error ? err.message : String(err)}`,
+          rootPath,
+        );
         probeResult = undefined;
       }
 
@@ -359,7 +388,9 @@ export class ClientManager {
 
         if (config.missingBufNotification && !this.#notifiedMissingBuf.has(rootKey)) {
           this.#notifiedMissingBuf.add(rootKey);
-          await this.notifyMissingBuf("Buf CLI is missing or does not support LSP. Protobuf features will be degraded.");
+          await this.notifyMissingBuf(
+            "Buf CLI is missing or does not support LSP. Protobuf features will be degraded.",
+          );
         }
         return;
       }
@@ -370,7 +401,7 @@ export class ClientManager {
           root: rootDirectoryUri,
           executable: config.bufPath,
           trace: config.traceServer,
-          output: this.#deps.output
+          output: this.#deps.output,
         });
 
         managed.client = client;
@@ -460,7 +491,12 @@ export class ClientManager {
 
     managed.state = "error";
     managed.detail = `Server process crashed; retrying in ${String(delay)}ms`;
-    this.#deps.output.write("warn", "ClientManager", `Language client stopped unexpectedly. Scheduling restart in ${String(delay)}ms`, managed.root);
+    this.#deps.output.write(
+      "warn",
+      "ClientManager",
+      `Language client stopped unexpectedly. Scheduling restart in ${String(delay)}ms`,
+      managed.root,
+    );
     this.emitStatuses();
 
     if (managed.restartTimer) {

@@ -7,9 +7,9 @@ describe("runProcess (platform)", () => {
       process.execPath,
       [
         "-e",
-        "let pending = 2; const done = () => { if (--pending === 0) process.exit(0); }; process.stdout.write('out', done); process.stderr.write('err', done);"
+        "let pending = 2; const done = () => { if (--pending === 0) process.exit(0); }; process.stdout.write('out', done); process.stderr.write('err', done);",
       ],
-      { timeoutMs: 2000 }
+      { timeoutMs: 2000 },
     );
     assert.equal(result.stdout, "out");
     assert.equal(result.stderr, "err");
@@ -18,11 +18,7 @@ describe("runProcess (platform)", () => {
   });
 
   it("handles process timeout correctly", async () => {
-    const result = await runProcess(
-      process.execPath,
-      ["-e", "setTimeout(() => {}, 10000)"],
-      { timeoutMs: 50 }
-    );
+    const result = await runProcess(process.execPath, ["-e", "setTimeout(() => {}, 10000)"], { timeoutMs: 50 });
     assert.equal(result.timedOut, true);
   });
 
@@ -31,28 +27,18 @@ describe("runProcess (platform)", () => {
       () =>
         runProcess(
           process.execPath,
-          [
-            "-e",
-            "process.stdout.write(Buffer.alloc(11 * 1024 * 1024), () => process.exit(0))"
-          ],
-          { timeoutMs: 5000 }
+          ["-e", "process.stdout.write(Buffer.alloc(11 * 1024 * 1024), () => process.exit(0))"],
+          { timeoutMs: 5000 },
         ),
-      /Process output buffer limit exceeded/
+      /Process output buffer limit exceeded/,
     );
   });
 
   it("rejects executables containing invalid control characters", async () => {
-    await assert.rejects(
-      () =>
-        runProcess("node\0bad", [], { timeoutMs: 1000 }),
-      /control characters/i
-    );
+    await assert.rejects(() => runProcess("node\0bad", [], { timeoutMs: 1000 }), /control characters/i);
   });
 
   it("rejects when binary path does not exist", async () => {
-    await assert.rejects(
-      () =>
-        runProcess("/nonexistent_buf_binary_test_12345", [], { timeoutMs: 1000 })
-    );
+    await assert.rejects(() => runProcess("/nonexistent_buf_binary_test_12345", [], { timeoutMs: 1000 }));
   });
 });

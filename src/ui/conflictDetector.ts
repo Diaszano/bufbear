@@ -6,7 +6,7 @@ import { getVscode } from "../platform/vscodeRef.js";
 export const FULL_PROTO_EXTENSIONS = [
   "bufbuild.vscode-buf",
   "zxh404.vscode-proto3",
-  "sankethdev.vscode-proto"
+  "sankethdev.vscode-proto",
 ] as const;
 
 export interface ConflictDetectorDependencies {
@@ -70,7 +70,7 @@ export async function checkConflicts(dependencies: ConflictDetectorDependencies 
     ((msg: string, ...items: string[]) => vsc?.window.showWarningMessage(msg, ...items) ?? Promise.resolve(undefined));
 
   const message = `BufBear detected another active Protobuf extension (${activeConflicts.join(
-    ", "
+    ", ",
   )}). Running multiple Protobuf LSP extensions may cause duplicate diagnostics and tooltips.`;
 
   const action = await showWarn(message, "Open Extensions", "Disable BufBear LSP", "Ignore");

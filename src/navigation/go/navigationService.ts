@@ -2,11 +2,7 @@ import fs from "node:fs/promises";
 import { BoundedCache } from "../../platform/boundedCache.js";
 import type { ProtoDeclaration } from "./declaration.js";
 import { isWithin, mapToGeneratedGo } from "./fileMapping.js";
-import {
-  GoIndex,
-  prepareGoLines,
-  type IndexedLocation
-} from "./goIndex.js";
+import { GoIndex, prepareGoLines, type IndexedLocation } from "./goIndex.js";
 
 export const MAX_GENERATED_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -98,7 +94,7 @@ export class GoNavigationService {
       moduleRoot: request.moduleRoot,
       protoFile: request.protoFile,
       generatedRoot: request.generatedRoot,
-      declaration: request.declaration
+      declaration: request.declaration,
     });
 
     if (!target) {
@@ -160,7 +156,7 @@ export class GoNavigationService {
       if (cachedLoc) {
         return {
           filePath: target.filePath,
-          location: cachedLoc
+          location: cachedLoc,
         };
       }
     } else {
@@ -195,7 +191,7 @@ export class GoNavigationService {
       mtimeMs: statResult.mtimeMs,
       size: statResult.size,
       lines,
-      locations
+      locations,
     });
 
     if (!location) {
@@ -204,7 +200,7 @@ export class GoNavigationService {
 
     return {
       filePath: target.filePath,
-      location
+      location,
     };
   }
 

@@ -21,11 +21,7 @@ export function prepareGoLines(content: string): string[] {
 }
 
 export class GoIndex {
-  public find(
-    content: string,
-    target: GoTarget,
-    isCancelled?: () => boolean
-  ): IndexedLocation | undefined {
+  public find(content: string, target: GoTarget, isCancelled?: () => boolean): IndexedLocation | undefined {
     return this.findInLines(prepareGoLines(content), target, isCancelled);
   }
 
@@ -37,7 +33,7 @@ export class GoIndex {
   public findInLines(
     lines: readonly string[],
     target: GoTarget,
-    isCancelled?: () => boolean
+    isCancelled?: () => boolean,
   ): IndexedLocation | undefined {
     if (isCancelled?.()) {
       return undefined;
@@ -59,7 +55,7 @@ export class GoIndex {
               return {
                 line: i,
                 startCharacter,
-                endCharacter: startCharacter + target.symbolName.length
+                endCharacter: startCharacter + target.symbolName.length,
               };
             }
           }
@@ -80,7 +76,7 @@ export class GoIndex {
               return {
                 line: i,
                 startCharacter,
-                endCharacter: startCharacter + target.symbolName.length
+                endCharacter: startCharacter + target.symbolName.length,
               };
             }
           }
@@ -103,7 +99,7 @@ export class GoIndex {
               return {
                 line: i,
                 startCharacter,
-                endCharacter: startCharacter + goServiceName.length
+                endCharacter: startCharacter + goServiceName.length,
               };
             }
           }
@@ -148,7 +144,7 @@ export class GoIndex {
                 return {
                   line: i,
                   startCharacter,
-                  endCharacter: startCharacter + target.symbolName.length
+                  endCharacter: startCharacter + target.symbolName.length,
                 };
               }
             }

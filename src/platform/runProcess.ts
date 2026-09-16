@@ -20,7 +20,7 @@ const MAX_BUFFER_BYTES = 10 * 1024 * 1024; // 10 MiB buffer cap per spec
 export function runProcess(
   executable: string,
   args: readonly string[],
-  options: ProcessOptions = {}
+  options: ProcessOptions = {},
 ): Promise<RunProcessResult> {
   if (/[\0\r\n]/.test(executable)) {
     return Promise.reject(new Error("Executable path contains invalid control characters"));
@@ -35,7 +35,7 @@ export function runProcess(
     const child = spawn(executable, [...args], {
       shell: false,
       cwd: options.cwd,
-      env: options.env
+      env: options.env,
     });
 
     const cleanup = (): void => {
@@ -132,7 +132,7 @@ export function runProcess(
         stderr,
         exitCode: code,
         signal,
-        timedOut
+        timedOut,
       });
     });
   });

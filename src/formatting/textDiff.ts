@@ -4,10 +4,7 @@ export interface LineEdit {
   readonly newText: string;
 }
 
-export function diffLines(
-  originalLines: readonly string[],
-  formattedLines: readonly string[]
-): LineEdit[] {
+export function diffLines(originalLines: readonly string[], formattedLines: readonly string[]): LineEdit[] {
   let prefix = 0;
   while (
     prefix < originalLines.length &&
@@ -25,8 +22,7 @@ export function diffLines(
   while (
     suffix < originalLines.length - prefix &&
     suffix < formattedLines.length - prefix &&
-    originalLines[originalLines.length - 1 - suffix] ===
-      formattedLines[formattedLines.length - 1 - suffix]
+    originalLines[originalLines.length - 1 - suffix] === formattedLines[formattedLines.length - 1 - suffix]
   ) {
     suffix++;
   }
@@ -41,8 +37,8 @@ export function diffLines(
       {
         startLine: originalStart,
         endLineExclusive: originalEnd,
-        newText: replacementText
-      }
+        newText: replacementText,
+      },
     ];
   }
 
@@ -54,8 +50,8 @@ export function diffLines(
         {
           startLine: originalStart - 1,
           endLineExclusive: originalStart,
-          newText: `${anchor}\n${replacementText}`
-        }
+          newText: `${anchor}\n${replacementText}`,
+        },
       ];
     }
   }
@@ -67,8 +63,8 @@ export function diffLines(
         {
           startLine: 0,
           endLineExclusive: 1,
-          newText: `${replacementText}\n${first}`
-        }
+          newText: `${replacementText}\n${first}`,
+        },
       ];
     }
   }
@@ -77,7 +73,7 @@ export function diffLines(
     {
       startLine: 0,
       endLineExclusive: 0,
-      newText: replacementText
-    }
+      newText: replacementText,
+    },
   ];
 }

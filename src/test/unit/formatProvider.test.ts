@@ -4,15 +4,24 @@ import type { BufBearConfig } from "../../config/types.js";
 import { BufFormattingProvider, type FormattingProviderDependencies } from "../../formatting/formatProvider.js";
 
 class TestPosition {
-  public constructor(public line: number, public character: number) {}
+  public constructor(
+    public line: number,
+    public character: number,
+  ) {}
 }
 
 class TestRange {
-  public constructor(public start: TestPosition, public end: TestPosition) {}
+  public constructor(
+    public start: TestPosition,
+    public end: TestPosition,
+  ) {}
 }
 
 class TestTextEdit {
-  public constructor(public range: TestRange, public newText: string) {}
+  public constructor(
+    public range: TestRange,
+    public newText: string,
+  ) {}
   public static replace(range: TestRange, newText: string): TestTextEdit {
     return new TestTextEdit(range, newText);
   }
@@ -24,8 +33,8 @@ const stubVscode = {
   TextEdit: TestTextEdit as unknown as typeof vscode.TextEdit,
   workspace: {
     isTrusted: true,
-    getWorkspaceFolder: () => undefined
-  }
+    getWorkspaceFolder: () => undefined,
+  },
 } as unknown as typeof vscode;
 
 function createMockConfig(overrides: Partial<BufBearConfig> = {}): BufBearConfig {
@@ -39,7 +48,7 @@ function createMockConfig(overrides: Partial<BufBearConfig> = {}): BufBearConfig
     goSourceRelative: true,
     conflictWarningEnabled: true,
     formattingEnabled: true,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -49,7 +58,7 @@ const noopLog = (): void => {
 
 function createDeps(
   formattedText: string,
-  overrides: Partial<FormattingProviderDependencies> = {}
+  overrides: Partial<FormattingProviderDependencies> = {},
 ): FormattingProviderDependencies {
   return {
     findRoot: () => Promise.resolve("/workspace"),
@@ -57,7 +66,7 @@ function createDeps(
     readConfig: () => createMockConfig(),
     writeLog: noopLog,
     vscode: stubVscode,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -71,14 +80,17 @@ function createMockDocument(text: string): vscode.TextDocument {
       const lineText = lines[index] ?? "";
       // Mirror the real API: lineAt().range is a Range with Position endpoints.
       return {
-        range: new TestRange(new TestPosition(index, 0), new TestPosition(index, lineText.length))
+        range: new TestRange(new TestPosition(index, 0), new TestPosition(index, lineText.length)),
       };
-    }
+    },
   } as unknown as vscode.TextDocument;
 }
 
 function createRange(startLine: number, startCharacter: number, endLine: number, endCharacter: number): vscode.Range {
-  return new TestRange(new TestPosition(startLine, startCharacter), new TestPosition(endLine, endCharacter)) as unknown as vscode.Range;
+  return new TestRange(
+    new TestPosition(startLine, startCharacter),
+    new TestPosition(endLine, endCharacter),
+  ) as unknown as vscode.Range;
 }
 
 const noOptions = {} as vscode.FormattingOptions;
@@ -93,7 +105,7 @@ describe("BufFormattingProvider", () => {
       uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
       getText: () => 'syntax="proto3";',
       lineCount: 1,
-      lineAt: () => ({ range: { end: { character: 16 } } })
+      lineAt: () => ({ range: { end: { character: 16 } } }),
     } as unknown as vscode.TextDocument;
 
     const provider = new BufFormattingProvider(createDeps('syntax = "proto3";\n'));
@@ -113,11 +125,11 @@ describe("BufFormattingProvider", () => {
       createMockDocument(original),
       createRange(1, 0, 1, 17),
       noOptions,
-      createToken()
+      createToken(),
     );
 
     assert.deepEqual(edits, [
-      new TestTextEdit(new TestRange(new TestPosition(1, 0), new TestPosition(1, 17)), "package foo.v1;")
+      new TestTextEdit(new TestRange(new TestPosition(1, 0), new TestPosition(1, 17)), "package foo.v1;"),
     ]);
   });
 
@@ -130,33 +142,28 @@ describe("BufFormattingProvider", () => {
       createMockDocument(original),
       createRange(0, 0, 1, 18),
       noOptions,
-      createToken()
+      createToken(),
     );
 
     assert.deepEqual(edits, []);
   });
 
   it("expands multiline reflows crossing the range border to whole-line edits", async () => {
-    const original =
-      "message Foo {\n  string a = 1;\n  string b = 2;\n}\nmessage Bar {\n  int64  x = 1;\n}\n";
-    const formatted =
-      "message Foo {\n  string a = 1;  string b = 2;\n}\nmessage Bar {\n  int64 x = 1;\n}\n";
+    const original = "message Foo {\n  string a = 1;\n  string b = 2;\n}\nmessage Bar {\n  int64  x = 1;\n}\n";
+    const formatted = "message Foo {\n  string a = 1;  string b = 2;\n}\nmessage Bar {\n  int64 x = 1;\n}\n";
     const provider = new BufFormattingProvider(createDeps(formatted));
 
     const edits = await provider.provideDocumentRangeFormattingEdits(
       createMockDocument(original),
       createRange(2, 0, 5, 3),
       noOptions,
-      createToken()
+      createToken(),
     );
 
     assert.equal(edits.length, 1);
     const edit = edits[0];
     assert.ok(edit);
-    assert.deepEqual(
-      edit.range,
-      new TestRange(new TestPosition(1, 0), new TestPosition(5, "  int64  x = 1;".length))
-    );
+    assert.deepEqual(edit.range, new TestRange(new TestPosition(1, 0), new TestPosition(5, "  int64  x = 1;".length)));
     assert.equal(edit.newText, "  string a = 1;  string b = 2;\n}\nmessage Bar {\n  int64 x = 1;");
   });
 
@@ -168,7 +175,7 @@ describe("BufFormattingProvider", () => {
       createMockDocument(text),
       createRange(0, 0, 4, 0),
       noOptions,
-      createToken()
+      createToken(),
     );
 
     assert.deepEqual(edits, []);
@@ -183,7 +190,7 @@ describe("BufFormattingProvider", () => {
       createMockDocument(original),
       createRange(0, 0, 2, 1),
       noOptions,
-      createToken(true)
+      createToken(true),
     );
 
     assert.deepEqual(edits, []);
@@ -192,11 +199,11 @@ describe("BufFormattingProvider", () => {
   it("returns empty edits silently when formatting is disabled in config", async () => {
     const document = {
       uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
-      getText: () => 'syntax="proto3";'
+      getText: () => 'syntax="proto3";',
     } as unknown as vscode.TextDocument;
 
     const deps = createDeps('syntax = "proto3";\n', {
-      readConfig: () => createMockConfig({ formattingEnabled: false })
+      readConfig: () => createMockConfig({ formattingEnabled: false }),
     });
     const provider = new BufFormattingProvider(deps);
     const edits = await provider.provideDocumentFormattingEdits(document);
@@ -207,15 +214,15 @@ describe("BufFormattingProvider", () => {
   it("returns empty edits silently when workspace is untrusted", async () => {
     const document = {
       uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
-      getText: () => 'syntax="proto3";'
+      getText: () => 'syntax="proto3";',
     } as unknown as vscode.TextDocument;
 
     const untrustedVscode = {
       ...stubVscode,
       workspace: {
         ...stubVscode.workspace,
-        isTrusted: false
-      }
+        isTrusted: false,
+      },
     } as unknown as typeof vscode;
 
     const deps = createDeps('syntax = "proto3";\n', { vscode: untrustedVscode });
@@ -233,8 +240,8 @@ describe("BufFormattingProvider", () => {
       ...stubVscode,
       workspace: {
         ...stubVscode.workspace,
-        getWorkspaceFolder: () => ({ uri: { fsPath: "/mock/workspace" } })
-      }
+        getWorkspaceFolder: () => ({ uri: { fsPath: "/mock/workspace" } }),
+      },
     } as unknown as typeof vscode;
 
     const deps = createDeps('syntax = "proto3";\n', {
@@ -246,14 +253,14 @@ describe("BufFormattingProvider", () => {
       formatText: (options) => {
         receivedCwd = options.cwd;
         return Promise.resolve({ success: true, formattedText: 'syntax = "proto3";\n' });
-      }
+      },
     });
 
     const document = {
       uri: { fsPath: "/mock/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
       getText: () => 'syntax="proto3";',
       lineCount: 1,
-      lineAt: () => ({ range: { end: { character: 16 } } })
+      lineAt: () => ({ range: { end: { character: 16 } } }),
     } as unknown as vscode.TextDocument;
 
     const provider = new BufFormattingProvider(deps);
@@ -267,7 +274,7 @@ describe("BufFormattingProvider", () => {
   it("returns empty edits silently for non-file URI schemes", async () => {
     const document = {
       uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "untitled" } as vscode.Uri,
-      getText: () => 'syntax="proto3";'
+      getText: () => 'syntax="proto3";',
     } as unknown as vscode.TextDocument;
 
     const provider = new BufFormattingProvider(createDeps('syntax = "proto3";\n'));
@@ -279,15 +286,16 @@ describe("BufFormattingProvider", () => {
   it("returns empty edits silently and logs warning when format fails", async () => {
     const document = {
       uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
-      getText: () => "invalid proto"
+      getText: () => "invalid proto",
     } as unknown as vscode.TextDocument;
 
-    const logs: { level: "info" | "warn" | "error"; component: string; message: string; root?: string | undefined }[] = [];
+    const logs: { level: "info" | "warn" | "error"; component: string; message: string; root?: string | undefined }[] =
+      [];
     const deps = createDeps("", {
       formatText: () => Promise.resolve({ success: false, error: "Syntax error" }),
       writeLog: (level: "info" | "warn" | "error", component: string, message: string, root?: string) => {
         logs.push({ level, component, message, root });
-      }
+      },
     });
 
     const provider = new BufFormattingProvider(deps);
@@ -307,7 +315,7 @@ describe("BufFormattingProvider", () => {
       uri: { fsPath: "/workspace/api/v1/test.proto", scheme: "file" } as vscode.Uri,
       getText: () => 'syntax = "proto3";\n',
       lineCount: 1,
-      lineAt: () => ({ range: { end: { character: 18 } } })
+      lineAt: () => ({ range: { end: { character: 18 } } }),
     } as unknown as vscode.TextDocument;
 
     const provider = new BufFormattingProvider(createDeps('syntax = "proto3";\n'));

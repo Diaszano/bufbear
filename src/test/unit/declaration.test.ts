@@ -9,7 +9,7 @@ describe("findDeclarationAt", () => {
       name: "CreateBookRequest",
       line: 1,
       startCharacter: 8,
-      endCharacter: 25
+      endCharacter: 25,
     });
     assert.equal(findDeclarationAt(text, 1, 2), undefined);
   });
@@ -29,7 +29,7 @@ describe("findDeclarationAt", () => {
     const text = [
       "service BookService {",
       "  rpc CreateBook(CreateBookRequest) returns (CreateBookResponse);",
-      "}"
+      "}",
     ].join("\n");
     assert.deepEqual(findDeclarationAt(text, 1, 8), {
       kind: "rpc",
@@ -37,7 +37,7 @@ describe("findDeclarationAt", () => {
       line: 1,
       startCharacter: 6,
       endCharacter: 16,
-      parentService: "BookService"
+      parentService: "BookService",
     });
   });
 

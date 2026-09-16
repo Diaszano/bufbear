@@ -12,7 +12,7 @@ describe("Navigation Security", () => {
       name: "Book",
       line: 0,
       startCharacter: 8,
-      endCharacter: 12
+      endCharacter: 12,
     };
 
     it("rejects generatedRoot = '../outside' that escapes workspace", () => {
@@ -21,7 +21,7 @@ describe("Navigation Security", () => {
         moduleRoot: "/workspace/project/module",
         protoFile: "/workspace/project/module/book.proto",
         generatedRoot: "../../outside",
-        declaration: baseDeclaration
+        declaration: baseDeclaration,
       });
       assert.equal(result, undefined);
     });
@@ -32,7 +32,7 @@ describe("Navigation Security", () => {
         moduleRoot: "/workspace/project/module",
         protoFile: "/workspace/project/module/book.proto",
         generatedRoot: "/outside/gen",
-        declaration: baseDeclaration
+        declaration: baseDeclaration,
       });
       assert.equal(result, undefined);
     });
@@ -43,13 +43,10 @@ describe("Navigation Security", () => {
         moduleRoot: "/workspace/project/module",
         protoFile: "/workspace/project/module/sub/book.proto",
         generatedRoot: "gen/go",
-        declaration: baseDeclaration
+        declaration: baseDeclaration,
       });
       assert.ok(result);
-      assert.equal(
-        result.filePath,
-        path.resolve("/workspace/project/module/gen/go/sub/book.pb.go")
-      );
+      assert.equal(result.filePath, path.resolve("/workspace/project/module/gen/go/sub/book.pb.go"));
     });
 
     it("rejects NUL bytes in workspaceRoot, moduleRoot, protoFile, or generatedRoot", () => {
@@ -57,7 +54,7 @@ describe("Navigation Security", () => {
         { workspaceRoot: "/workspace\0/project" },
         { moduleRoot: "/workspace/project\0/module" },
         { protoFile: "/workspace/project/module/book.proto\0" },
-        { generatedRoot: "gen\0/go" }
+        { generatedRoot: "gen\0/go" },
       ];
 
       for (const override of nullInputs) {
@@ -67,7 +64,7 @@ describe("Navigation Security", () => {
           protoFile: "/workspace/project/module/book.proto",
           generatedRoot: "gen/go",
           declaration: baseDeclaration,
-          ...override
+          ...override,
         });
         assert.equal(result, undefined);
       }
@@ -79,7 +76,7 @@ describe("Navigation Security", () => {
         moduleRoot: "D:\\workspace\\project\\module",
         protoFile: "D:\\workspace\\project\\module\\book.proto",
         generatedRoot: "gen\\go",
-        declaration: baseDeclaration
+        declaration: baseDeclaration,
       });
       assert.equal(result, undefined);
     });
@@ -100,7 +97,7 @@ describe("Navigation Security", () => {
             return "/workspace/project";
           }
           return "/outside/book.pb.go";
-        }
+        },
       };
 
       const service = new GoNavigationService({ fileSystem: mockFs });
@@ -110,7 +107,7 @@ describe("Navigation Security", () => {
         protoFile: "/workspace/project/book.proto",
         generatedRoot: "gen",
         declaration: baseDeclaration,
-        isCancelled: () => false
+        isCancelled: () => false,
       });
 
       assert.equal(result, undefined);
@@ -126,13 +123,13 @@ describe("Navigation Security", () => {
         "",
         "type Book2 struct {}",
         "type Book_Archive struct {}",
-        "type Book struct {}"
+        "type Book struct {}",
       ].join("\n");
 
       const result = index.find(content, {
         filePath: "/ws/gen/book.pb.go",
         symbolName: "Book",
-        kind: "message"
+        kind: "message",
       });
 
       assert.ok(result);
@@ -146,13 +143,13 @@ describe("Navigation Security", () => {
         "package gen",
         "",
         "type BookServiceServerFactory interface {}",
-        "type BookServiceServer interface {}"
+        "type BookServiceServer interface {}",
       ].join("\n");
 
       const result = index.find(content, {
         filePath: "/ws/gen/book_grpc.pb.go",
         symbolName: "BookService",
-        kind: "service"
+        kind: "service",
       });
 
       assert.ok(result);
@@ -166,14 +163,14 @@ describe("Navigation Security", () => {
         "type BookServiceServer interface {",
         "  CreateBookWithAudit(ctx Context, req *Req) (*Res, error)",
         "  CreateBook(ctx Context, req *Req) (*Res, error)",
-        "}"
+        "}",
       ].join("\n");
 
       const result = index.find(content, {
         filePath: "/ws/gen/book_grpc.pb.go",
         symbolName: "CreateBook",
         kind: "rpc",
-        parentService: "BookService"
+        parentService: "BookService",
       });
 
       assert.ok(result);
@@ -183,17 +180,12 @@ describe("Navigation Security", () => {
     });
 
     it("ignores declarations in line comments", () => {
-      const content = [
-        "package gen",
-        "",
-        "// type Book struct {}",
-        "type Book struct {}"
-      ].join("\n");
+      const content = ["package gen", "", "// type Book struct {}", "type Book struct {}"].join("\n");
 
       const result = index.find(content, {
         filePath: "/ws/gen/book.pb.go",
         symbolName: "Book",
-        kind: "message"
+        kind: "message",
       });
 
       assert.ok(result);
@@ -201,19 +193,12 @@ describe("Navigation Security", () => {
     });
 
     it("ignores declarations in block comments", () => {
-      const content = [
-        "package gen",
-        "",
-        "/*",
-        "type Book struct {}",
-        "*/",
-        "type Book struct {}"
-      ].join("\n");
+      const content = ["package gen", "", "/*", "type Book struct {}", "*/", "type Book struct {}"].join("\n");
 
       const result = index.find(content, {
         filePath: "/ws/gen/book.pb.go",
         symbolName: "Book",
-        kind: "message"
+        kind: "message",
       });
 
       assert.ok(result);
@@ -225,14 +210,14 @@ describe("Navigation Security", () => {
         "package gen",
         "",
         'var s1 = "type Book struct {}"',
-        'var s2 = `type Book struct {}`',
-        "type Book struct {}"
+        "var s2 = `type Book struct {}`",
+        "type Book struct {}",
       ].join("\n");
 
       const result = index.find(content, {
         filePath: "/ws/gen/book.pb.go",
         symbolName: "Book",
-        kind: "message"
+        kind: "message",
       });
 
       assert.ok(result);
@@ -242,10 +227,10 @@ describe("Navigation Security", () => {
     it("ignores comments and strings in findDeclarationAt proto parser", () => {
       const protoText = [
         'syntax = "proto3";',
-        '// message Book {}',
-        '/* message Book {} */',
+        "// message Book {}",
+        "/* message Book {} */",
         'option string_opt = "message Book {}";',
-        'message Book {}'
+        "message Book {}",
       ].join("\n");
 
       assert.equal(findDeclarationAt(protoText, 1, 10), undefined);

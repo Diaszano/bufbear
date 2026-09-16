@@ -81,6 +81,6 @@ export function mapToGeneratedGo(input: GoMappingInput): GoTarget | undefined {
     filePath,
     symbolName: input.declaration.name,
     kind: input.declaration.kind,
-    ...(input.declaration.parentService ? { parentService: input.declaration.parentService } : {})
+    ...(input.declaration.parentService ? { parentService: input.declaration.parentService } : {}),
   };
 }

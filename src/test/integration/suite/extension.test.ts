@@ -14,7 +14,10 @@ describe("BufBear Integration Test Suite", () => {
     assert.ok(commands.includes("bufBear.showOutput"), "bufBear.showOutput command should be registered");
     assert.ok(commands.includes("bufBear.checkHealth"), "bufBear.checkHealth command should be registered");
     assert.ok(commands.includes("bufBear.openSettings"), "bufBear.openSettings command should be registered");
-    assert.ok(commands.includes("bufBear.goToGeneratedImplementation"), "bufBear.goToGeneratedImplementation command should be registered");
+    assert.ok(
+      commands.includes("bufBear.goToGeneratedImplementation"),
+      "bufBear.goToGeneratedImplementation command should be registered",
+    );
     assert.ok(commands.includes("bufBear.formatDocument"), "bufBear.formatDocument command should be registered");
   });
 

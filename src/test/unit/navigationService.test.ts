@@ -4,7 +4,7 @@ import {
   GoNavigationService,
   MAX_GENERATED_FILE_BYTES,
   type FileSystemReader,
-  type NavigationRequest
+  type NavigationRequest,
 } from "../../navigation/go/navigationService.js";
 import { GoIndex } from "../../navigation/go/goIndex.js";
 import type { ProtoDeclaration } from "../../navigation/go/declaration.js";
@@ -20,7 +20,7 @@ function createDeclaration(kind: ProtoDeclaration["kind"] = "message", name = "B
     name,
     line: 0,
     startCharacter: 0,
-    endCharacter: name.length
+    endCharacter: name.length,
   };
 }
 
@@ -32,7 +32,7 @@ function createRequest(overrides?: Partial<NavigationRequest>): NavigationReques
     generatedRoot: "gen/proto-go",
     declaration: createDeclaration(),
     isCancelled: () => false,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -222,7 +222,7 @@ describe("GoNavigationService", () => {
       onFileTooLarge: (filePath, size) => {
         tooLargePath = filePath;
         tooLargeSize = size;
-      }
+      },
     });
 
     const result = await service.find(createRequest());
@@ -238,9 +238,7 @@ describe("GoNavigationService", () => {
     const service = new GoNavigationService({ fileSystem: fs });
 
     // Proto file outside module root
-    const result = await service.find(
-      createRequest({ protoFile: path.resolve("/outside/other.proto") })
-    );
+    const result = await service.find(createRequest({ protoFile: path.resolve("/outside/other.proto") }));
 
     assert.equal(result, undefined);
     assert.equal(fs.statCalls.length, 0);
@@ -258,13 +256,16 @@ describe("GoNavigationService", () => {
       async readFile() {
         await Promise.resolve();
         return "";
-      }
+      },
     };
 
     const service = new GoNavigationService({ fileSystem: fs });
-    await assert.rejects(async () => {
-      await service.find(createRequest());
-    }, (err: Error & { code?: string }) => err.code === "EACCES");
+    await assert.rejects(
+      async () => {
+        await service.find(createRequest());
+      },
+      (err: Error & { code?: string }) => err.code === "EACCES",
+    );
   });
 
   it("uses custom GoIndex instance when provided", async () => {
@@ -297,12 +298,11 @@ describe("GoNavigationService", () => {
           const err = new Error("ENOENT: no such file or directory") as Error & { code: string };
           err.code = "ENOENT";
           throw err;
-        }
-      }
+        },
+      },
     });
     const result = await service.find(createRequest());
     assert.equal(result, undefined);
     assert.equal(statCalled, true);
   });
 });
-

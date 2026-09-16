@@ -7,11 +7,17 @@ import type { BufBearConfig } from "../../config/types.js";
 import type { BufProbe } from "../../lsp/bufExecutable.js";
 
 class TestPosition {
-  public constructor(public line: number, public character: number) {}
+  public constructor(
+    public line: number,
+    public character: number,
+  ) {}
 }
 
 class TestRange {
-  public constructor(public start: TestPosition, public end: TestPosition) {}
+  public constructor(
+    public start: TestPosition,
+    public end: TestPosition,
+  ) {}
 }
 
 class FakeOutput {
@@ -59,10 +65,10 @@ class FakeClientManager {
   public onDidChangeStatus(
     _listener: (statuses: readonly RootServerStatus[]) => void,
     _thisArgs?: unknown,
-    _disposables?: { dispose(): void }[]
+    _disposables?: { dispose(): void }[],
   ): vscode.Disposable {
     return {
-      dispose: () => undefined
+      dispose: () => undefined,
     };
   }
 }
@@ -92,7 +98,7 @@ function createFakeVscode(options: FakeVscodeOptions = {}): typeof vscode {
     Range: TestRange as unknown as typeof vscode.Range,
     Position: TestPosition as unknown as typeof vscode.Position,
     Uri: {
-      file: (fsPath: string) => ({ fsPath } as vscode.Uri)
+      file: (fsPath: string) => ({ fsPath }) as vscode.Uri,
     },
     Disposable: {
       from: (...items: { dispose: () => unknown }[]) => {
@@ -104,9 +110,9 @@ function createFakeVscode(options: FakeVscodeOptions = {}): typeof vscode {
             for (const item of items) {
               item.dispose();
             }
-          }
+          },
         };
-      }
+      },
     },
     commands: {
       registerCommand: (id: string, handler: (...args: unknown[]) => unknown) => {
@@ -114,7 +120,7 @@ function createFakeVscode(options: FakeVscodeOptions = {}): typeof vscode {
         return {
           dispose: () => {
             registered.delete(id);
-          }
+          },
         };
       },
       executeCommand: async (cmd: string, ...args: unknown[]) => {
@@ -122,7 +128,7 @@ function createFakeVscode(options: FakeVscodeOptions = {}): typeof vscode {
           return options.executeCommand(cmd, ...args);
         }
         return Promise.resolve();
-      }
+      },
     },
     window: {
       get activeTextEditor() {
@@ -157,20 +163,19 @@ function createFakeVscode(options: FakeVscodeOptions = {}): typeof vscode {
           return options.showTextDocument(doc, docOptions);
         }
         return Promise.resolve({} as vscode.TextEditor);
-      }
+      },
     },
     workspace: {
       isTrusted: options.isTrusted ?? true,
       getWorkspaceFolder: () => undefined,
-      asRelativePath: (resource: vscode.Uri | string) =>
-        typeof resource === "string" ? resource : resource.fsPath,
+      asRelativePath: (resource: vscode.Uri | string) => (typeof resource === "string" ? resource : resource.fsPath),
       openTextDocument: async (uri: vscode.Uri) => {
         if (options.openTextDocument) {
           return options.openTextDocument(uri);
         }
         return Promise.resolve({ uri } as vscode.TextDocument);
-      }
-    }
+      },
+    },
   } as unknown as typeof vscode;
 }
 
@@ -184,7 +189,7 @@ describe("Commands", () => {
     const disposable = registerCommands({
       clientManager: fakeManager,
       output: fakeOutput,
-      vscode: vsc
+      vscode: vsc,
     });
 
     assert.ok(registered.has("bufBear.restartServer"));
@@ -214,15 +219,15 @@ describe("Commands", () => {
               item.dispose();
               disposedCount++;
             }
-          }
+          },
         };
-      }
+      },
     });
 
     const disposable = registerCommands({
       clientManager: fakeManager,
       output: fakeOutput,
-      vscode: vsc
+      vscode: vsc,
     });
 
     assert.ok(fromCalledWithCount > 0, "Disposable.from should have been invoked");
@@ -239,7 +244,7 @@ describe("Commands", () => {
     const disposable = registerCommands({
       clientManager: fakeManager,
       output: fakeOutput,
-      vscode: vsc
+      vscode: vsc,
     });
 
     const handler = registered.get("bufBear.restartServer");
@@ -261,7 +266,7 @@ describe("Commands", () => {
     const disposable = registerCommands({
       clientManager: fakeManager,
       output: fakeOutput,
-      vscode: vsc
+      vscode: vsc,
     });
 
     const handler = registered.get("bufBear.showOutput");
@@ -283,7 +288,7 @@ describe("Commands", () => {
       return Promise.resolve({
         executable: "buf",
         version: "1.30.0",
-        supportsLsp: true
+        supportsLsp: true,
       });
     };
 
@@ -296,16 +301,16 @@ describe("Commands", () => {
       goGenRoot: "gen/proto-go",
       goSourceRelative: true,
       conflictWarningEnabled: true,
-      formattingEnabled: true
+      formattingEnabled: true,
     });
 
     const vsc = createFakeVscode({
       registered,
       activeTextEditor: {
         document: {
-          uri: { fsPath: "/workspace/proto/foo.proto" }
-        }
-      } as unknown as vscode.TextEditor
+          uri: { fsPath: "/workspace/proto/foo.proto" },
+        },
+      } as unknown as vscode.TextEditor,
     });
 
     const disposable = registerCommands({
@@ -314,7 +319,7 @@ describe("Commands", () => {
       vscode: vsc,
       probeBuf: fakeProbeBuf,
       readConfig: fakeReadConfig,
-      findRoot: async () => Promise.resolve("/workspace")
+      findRoot: async () => Promise.resolve("/workspace"),
     });
 
     const handler = registered.get("bufBear.checkHealth");
@@ -345,13 +350,13 @@ describe("Commands", () => {
         executedCommand = cmd;
         executedArgs = args;
         return Promise.resolve();
-      }
+      },
     });
 
     const disposable = registerCommands({
       clientManager: createFakeClientManager(),
       output: new FakeOutput(),
-      vscode: vsc
+      vscode: vsc,
     });
 
     const handler = registered.get("bufBear.openSettings");
@@ -370,18 +375,18 @@ describe("Commands", () => {
     const vsc = createFakeVscode({
       registered,
       activeTextEditor: {
-        document: { fileName: "/workspace/main.go" }
+        document: { fileName: "/workspace/main.go" },
       } as unknown as vscode.TextEditor,
       showInformationMessage: async (msg) => {
         shownMessage = msg;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     const disposable = registerCommands({
       clientManager: createFakeClientManager(),
       output: new FakeOutput(),
-      vscode: vsc
+      vscode: vsc,
     });
 
     const handler = registered.get("bufBear.goToGeneratedImplementation");
@@ -400,19 +405,19 @@ describe("Commands", () => {
       registered,
       activeTextEditor: {
         document: { fileName: "/workspace/user.proto" },
-        selection: { active: { line: 0, character: 5 } }
+        selection: { active: { line: 0, character: 5 } },
       } as unknown as vscode.TextEditor,
       showInformationMessage: async (msg) => {
         shownMessage = msg;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     const disposable = registerCommands({
       clientManager: createFakeClientManager(),
       output: new FakeOutput(),
       vscode: vsc,
-      resolveGoImplementation: async () => Promise.resolve({ status: "no_buf_root" as const })
+      resolveGoImplementation: async () => Promise.resolve({ status: "no_buf_root" as const }),
     });
 
     const handler = registered.get("bufBear.goToGeneratedImplementation");
@@ -432,7 +437,7 @@ describe("Commands", () => {
       registered,
       activeTextEditor: {
         document: { fileName: "/workspace/user.proto" },
-        selection: { active: { line: 0, character: 5 } }
+        selection: { active: { line: 0, character: 5 } },
       } as unknown as vscode.TextEditor,
       openTextDocument: async (uri) => {
         openedUri = uri;
@@ -441,7 +446,7 @@ describe("Commands", () => {
       showTextDocument: async (doc) => {
         shownDoc = doc;
         return Promise.resolve({} as vscode.TextEditor);
-      }
+      },
     });
 
     const disposable = registerCommands({
@@ -453,9 +458,9 @@ describe("Commands", () => {
           status: "success" as const,
           result: {
             filePath: "/workspace/gen/proto-go/user.pb.go",
-            location: { line: 10, startCharacter: 2, endCharacter: 10 }
-          }
-        })
+            location: { line: 10, startCharacter: 2, endCharacter: 10 },
+          },
+        }),
     });
 
     const handler = registered.get("bufBear.goToGeneratedImplementation");
@@ -478,13 +483,13 @@ describe("Commands", () => {
       executeCommand: (cmd: string) => {
         executedCommand = cmd;
         return Promise.resolve();
-      }
+      },
     });
 
     const disposable = registerCommands({
       clientManager: createFakeClientManager(),
       output: new FakeOutput(),
-      vscode: vsc
+      vscode: vsc,
     });
 
     const handler = registered.get("bufBear.showQuickPick");
@@ -502,18 +507,18 @@ describe("Commands", () => {
     const vsc = createFakeVscode({
       registered,
       activeTextEditor: {
-        document: { languageId: "typescript", uri: { fsPath: "/workspace/app.ts" } }
+        document: { languageId: "typescript", uri: { fsPath: "/workspace/app.ts" } },
       } as unknown as vscode.TextEditor,
       showWarningMessage: async (msg) => {
         warnMsg = msg;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     const disposable = registerCommands({
       clientManager: createFakeClientManager(),
       output: new FakeOutput(),
-      vscode: vsc
+      vscode: vsc,
     });
 
     const handler = registered.get("bufBear.formatDocument");
@@ -534,13 +539,13 @@ describe("Commands", () => {
         document: {
           languageId: "proto3",
           uri: { fsPath: "/workspace/api.proto" },
-          getText: () => 'syntax = "proto3";'
-        }
+          getText: () => 'syntax = "proto3";',
+        },
       } as unknown as vscode.TextEditor,
       showWarningMessage: async (msg) => {
         warnMsg = msg;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     const disposable = registerCommands({
@@ -556,9 +561,9 @@ describe("Commands", () => {
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
         conflictWarningEnabled: true,
-        formattingEnabled: true
+        formattingEnabled: true,
       }),
-      formatProtoText: async () => Promise.resolve({ success: false as const, error: "syntax error on line 1" })
+      formatProtoText: async () => Promise.resolve({ success: false as const, error: "syntax error on line 1" }),
     });
 
     const handler = registered.get("bufBear.formatDocument");
@@ -581,13 +586,13 @@ describe("Commands", () => {
         document: {
           languageId: "proto3",
           uri: { fsPath: "/workspace/api.proto" },
-          getText: () => 'syntax = "proto3";'
-        }
+          getText: () => 'syntax = "proto3";',
+        },
       } as unknown as vscode.TextEditor,
       showInformationMessage: async (msg) => {
         infoMsg = msg;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     const disposable = registerCommands({
@@ -597,7 +602,7 @@ describe("Commands", () => {
       formatProtoText: async () => {
         formatCalled = true;
         return Promise.resolve({ success: true as const, formattedText: 'syntax = "proto3";\n' });
-      }
+      },
     });
 
     const handler = registered.get("bufBear.formatDocument");
@@ -620,13 +625,13 @@ describe("Commands", () => {
         document: {
           languageId: "proto3",
           uri: { fsPath: "/workspace/api.proto" },
-          getText: () => 'syntax = "proto3";'
-        }
+          getText: () => 'syntax = "proto3";',
+        },
       } as unknown as vscode.TextEditor,
       showInformationMessage: async (msg) => {
         infoMsg = msg;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     const disposable = registerCommands({
@@ -642,12 +647,12 @@ describe("Commands", () => {
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
         conflictWarningEnabled: true,
-        formattingEnabled: false
+        formattingEnabled: false,
       }),
       formatProtoText: async () => {
         formatCalled = true;
         return Promise.resolve({ success: true as const, formattedText: 'syntax = "proto3";\n' });
-      }
+      },
     });
 
     const handler = registered.get("bufBear.formatDocument");
@@ -673,18 +678,18 @@ describe("Commands", () => {
           uri: { fsPath: "/workspace/api.proto" },
           getText: () => 'syntax="proto3";',
           lineCount: 1,
-          lineAt: () => ({ range: { end: { line: 0, character: 16 } } })
+          lineAt: () => ({ range: { end: { line: 0, character: 16 } } }),
         },
         edit: async (callback: (builder: { replace: (range: unknown, text: string) => void }) => void) => {
           editCalled = true;
           callback({
             replace: (_range: unknown, text: string) => {
               editContent = text;
-            }
+            },
           });
           return Promise.resolve(true);
-        }
-      } as unknown as vscode.TextEditor
+        },
+      } as unknown as vscode.TextEditor,
     });
 
     const disposable = registerCommands({
@@ -700,9 +705,9 @@ describe("Commands", () => {
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
         conflictWarningEnabled: true,
-        formattingEnabled: true
+        formattingEnabled: true,
       }),
-      formatProtoText: async () => Promise.resolve({ success: true as const, formattedText: 'syntax = "proto3";\n' })
+      formatProtoText: async () => Promise.resolve({ success: true as const, formattedText: 'syntax = "proto3";\n' }),
     });
 
     const handler = registered.get("bufBear.formatDocument");

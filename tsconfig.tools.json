@@ -8,6 +8,6 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["esbuild.ts", "eslint.config.ts"],
+  "include": ["esbuild.mts"],
   "exclude": ["node_modules", "dist", "out"]
 }

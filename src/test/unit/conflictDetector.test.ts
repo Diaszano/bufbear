@@ -5,7 +5,7 @@ import {
   resetConflictWarningSession,
   subscribeToExtensionChanges,
   FULL_PROTO_EXTENSIONS,
-  type ConflictDetectorDependencies
+  type ConflictDetectorDependencies,
 } from "../../ui/conflictDetector.js";
 import type { BufBearConfig } from "../../config/types.js";
 
@@ -20,7 +20,7 @@ function createDefaultConfig(overrides: Partial<BufBearConfig> = {}): BufBearCon
     goSourceRelative: true,
     conflictWarningEnabled: true,
     formattingEnabled: true,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -35,14 +35,14 @@ function createFakeExtensionEvent(): {
       return {
         dispose: () => {
           listeners.delete(listener);
-        }
+        },
       };
     },
     fire: () => {
       for (const listener of [...listeners]) {
         listener(undefined);
       }
-    }
+    },
   };
 }
 
@@ -63,7 +63,7 @@ describe("ConflictDetector", () => {
       showWarningMessage: async () => {
         warnCalled = true;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     assert.strictEqual(warnCalled, false);
@@ -78,8 +78,9 @@ describe("ConflictDetector", () => {
 
     const dependencies: ConflictDetectorDependencies = {
       readConfig: () => createDefaultConfig(),
-      getExtension: (id: string) => (id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
-      showWarningMessage: fakeShowWarning
+      getExtension: (id: string) =>
+        id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined,
+      showWarningMessage: fakeShowWarning,
     };
 
     await checkConflicts(dependencies);
@@ -94,11 +95,11 @@ describe("ConflictDetector", () => {
     let warnCalled = false;
     await checkConflicts({
       readConfig: () => createDefaultConfig({ conflictWarningEnabled: false }),
-      getExtension: () => ({ isActive: true } as vscode.Extension<unknown>),
+      getExtension: () => ({ isActive: true }) as vscode.Extension<unknown>,
       showWarningMessage: async () => {
         warnCalled = true;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     assert.strictEqual(warnCalled, false);
@@ -108,11 +109,11 @@ describe("ConflictDetector", () => {
     let warnCalled = false;
     await checkConflicts({
       readConfig: () => createDefaultConfig({ lspEnabled: false }),
-      getExtension: () => ({ isActive: true } as vscode.Extension<unknown>),
+      getExtension: () => ({ isActive: true }) as vscode.Extension<unknown>,
       showWarningMessage: async () => {
         warnCalled = true;
         return Promise.resolve(undefined);
-      }
+      },
     });
 
     assert.strictEqual(warnCalled, false);
@@ -123,26 +124,28 @@ describe("ConflictDetector", () => {
 
     await checkConflicts({
       readConfig: () => createDefaultConfig(),
-      getExtension: (id) => (id === "bufbuild.vscode-buf" ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
+      getExtension: (id) =>
+        id === "bufbuild.vscode-buf" ? ({ isActive: true } as vscode.Extension<unknown>) : undefined,
       showWarningMessage: async () => Promise.resolve("Disable BufBear LSP"),
       updateConfig: async (section, value, target) => {
         updatedConfig = { section, value, target };
         await Promise.resolve();
-      }
+      },
     });
 
     assert.deepStrictEqual(updatedConfig, {
       section: "bufBear.lsp.enabled",
       value: false,
-      target: 2 // Workspace target
+      target: 2, // Workspace target
     });
   });
 
   it("handles Open Extensions action cleanly without throwing", async () => {
     await checkConflicts({
       readConfig: () => createDefaultConfig(),
-      getExtension: (id) => (id === "bufbuild.vscode-buf" ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
-      showWarningMessage: async () => Promise.resolve("Open Extensions")
+      getExtension: (id) =>
+        id === "bufbuild.vscode-buf" ? ({ isActive: true } as vscode.Extension<unknown>) : undefined,
+      showWarningMessage: async () => Promise.resolve("Open Extensions"),
     });
   });
 
@@ -154,12 +157,14 @@ describe("ConflictDetector", () => {
     subscribeToExtensionChanges({
       readConfig: () => createDefaultConfig(),
       getExtension: (id) =>
-        conflictActive && id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined,
+        conflictActive && id === FULL_PROTO_EXTENSIONS[0]
+          ? ({ isActive: true } as vscode.Extension<unknown>)
+          : undefined,
       showWarningMessage: () => {
         warningCount++;
         return Promise.resolve("Ignore");
       },
-      extensions: { onDidChange: event.onDidChange }
+      extensions: { onDidChange: event.onDidChange },
     });
 
     event.fire();
@@ -178,12 +183,13 @@ describe("ConflictDetector", () => {
 
     subscribeToExtensionChanges({
       readConfig: () => createDefaultConfig(),
-      getExtension: (id) => (id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined),
+      getExtension: (id) =>
+        id === FULL_PROTO_EXTENSIONS[0] ? ({ isActive: true } as vscode.Extension<unknown>) : undefined,
       showWarningMessage: () => {
         warningCount++;
         return Promise.resolve("Ignore");
       },
-      extensions: { onDidChange: event.onDidChange }
+      extensions: { onDidChange: event.onDidChange },
     });
 
     event.fire();
@@ -205,7 +211,7 @@ describe("ConflictDetector", () => {
       },
       getExtension: () => undefined,
       showWarningMessage: () => Promise.resolve("Ignore"),
-      extensions: { onDidChange: event.onDidChange }
+      extensions: { onDidChange: event.onDidChange },
     });
 
     event.fire();
@@ -230,7 +236,7 @@ describe("ConflictDetector", () => {
         warnCalled = true;
         return Promise.resolve(undefined);
       },
-      extensions: { onDidChange: event.onDidChange }
+      extensions: { onDidChange: event.onDidChange },
     });
 
     event.fire();

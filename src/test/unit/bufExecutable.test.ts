@@ -13,14 +13,20 @@ describe("probeBuf", () => {
     const mockRunner = (
       executable: string,
       args: readonly string[],
-      options?: { timeoutMs?: number }
+      options?: { timeoutMs?: number },
     ): Promise<RunProcessResult> => {
       calls.push({ executable, args, options });
       if (args.includes("--version")) {
         return Promise.resolve({ stdout: "1.30.0\n", stderr: "", exitCode: 0, signal: null, timedOut: false });
       }
       if (args.includes("lsp") && args.includes("serve")) {
-        return Promise.resolve({ stdout: "Usage: buf lsp serve...", stderr: "", exitCode: 0, signal: null, timedOut: false });
+        return Promise.resolve({
+          stdout: "Usage: buf lsp serve...",
+          stderr: "",
+          exitCode: 0,
+          signal: null,
+          timedOut: false,
+        });
       }
       return Promise.resolve({ stdout: "", stderr: "", exitCode: 1, signal: null, timedOut: false });
     };
@@ -36,14 +42,17 @@ describe("probeBuf", () => {
   });
 
   it("returns supportsLsp: false when lsp serve command fails", async () => {
-    const mockRunner = (
-      _executable: string,
-      args: readonly string[]
-    ): Promise<RunProcessResult> => {
+    const mockRunner = (_executable: string, args: readonly string[]): Promise<RunProcessResult> => {
       if (args.includes("--version")) {
         return Promise.resolve({ stdout: "1.0.0\n", stderr: "", exitCode: 0, signal: null, timedOut: false });
       }
-      return Promise.resolve({ stdout: "unknown command", stderr: "error", exitCode: 1, signal: null, timedOut: false });
+      return Promise.resolve({
+        stdout: "unknown command",
+        stderr: "error",
+        exitCode: 1,
+        signal: null,
+        timedOut: false,
+      });
     };
 
     const result = await probeBuf("/usr/local/bin/buf", mockRunner);
@@ -54,10 +63,7 @@ describe("probeBuf", () => {
   });
 
   it("returns supportsLsp: false when lsp serve command times out", async () => {
-    const mockRunner = (
-      _executable: string,
-      args: readonly string[]
-    ): Promise<RunProcessResult> => {
+    const mockRunner = (_executable: string, args: readonly string[]): Promise<RunProcessResult> => {
       if (args.includes("--version")) {
         return Promise.resolve({ stdout: "1.25.0\n", stderr: "", exitCode: 0, signal: null, timedOut: false });
       }
@@ -74,10 +80,7 @@ describe("probeBuf", () => {
       return Promise.resolve({ stdout: "", stderr: "command not found", exitCode: 127, signal: null, timedOut: false });
     };
 
-    await assert.rejects(
-      () => probeBuf("invalid-buf", mockRunner),
-      /Buf version probe failed/
-    );
+    await assert.rejects(() => probeBuf("invalid-buf", mockRunner), /Buf version probe failed/);
   });
 
   it("throws error when version probe times out", async () => {
@@ -85,10 +88,7 @@ describe("probeBuf", () => {
       return Promise.resolve({ stdout: "", stderr: "", exitCode: null, signal: "SIGTERM", timedOut: true });
     };
 
-    await assert.rejects(
-      () => probeBuf("buf", mockRunner),
-      /Buf version probe failed/
-    );
+    await assert.rejects(() => probeBuf("buf", mockRunner), /Buf version probe failed/);
   });
 
   it("rejects empty or invalid executable strings", async () => {
@@ -96,17 +96,8 @@ describe("probeBuf", () => {
       return Promise.resolve({ stdout: "1.0.0", stderr: "", exitCode: 0, signal: null, timedOut: false });
     };
 
-    await assert.rejects(
-      () => probeBuf("", dummyRunner),
-      /Buf executable must be a non-empty path/
-    );
-    await assert.rejects(
-      () => probeBuf("buf\n", dummyRunner),
-      /Buf executable must be a non-empty path/
-    );
-    await assert.rejects(
-      () => probeBuf("buf\0", dummyRunner),
-      /Buf executable must be a non-empty path/
-    );
+    await assert.rejects(() => probeBuf("", dummyRunner), /Buf executable must be a non-empty path/);
+    await assert.rejects(() => probeBuf("buf\n", dummyRunner), /Buf executable must be a non-empty path/);
+    await assert.rejects(() => probeBuf("buf\0", dummyRunner), /Buf executable must be a non-empty path/);
   });
 });
