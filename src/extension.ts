@@ -13,11 +13,7 @@ import { BufFormattingProvider } from "./formatting/formatProvider.js";
 import { BufLintCodeActionProvider } from "./ui/codeActions.js";
 import { registerWorkspaceWatchers } from "./ui/workspaceWatchers.js";
 
-const LSP_RESTART_SETTINGS = [
-  "bufBear.buf.path",
-  "bufBear.lsp.enabled",
-  "bufBear.buf.trace.server"
-] as const;
+const LSP_RESTART_SETTINGS = ["bufBear.buf.path", "bufBear.lsp.enabled", "bufBear.buf.trace.server"] as const;
 
 let shutdown: (() => Promise<void>) | undefined;
 
@@ -35,17 +31,17 @@ export function activate(context: vscode.ExtensionContext): void {
     isTrusted: () => vscode.workspace.isTrusted,
     showNotification: async (message: string, ...actions: string[]) => {
       return vscode.window.showInformationMessage(message, ...actions);
-    }
+    },
   });
 
   const statusBar = new StatusBar({
-    clientManager: manager
+    clientManager: manager,
   });
 
   const commandDisposable = registerCommands({
     clientManager: manager,
     output,
-    navigation
+    navigation,
   });
 
   context.subscriptions.push(output);
@@ -55,17 +51,20 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.languages.registerImplementationProvider(
       { language: "proto3", scheme: "file" },
-      new GeneratedGoImplementationProvider({ navigation, output })
-    )
+      new GeneratedGoImplementationProvider({ navigation, output }),
+    ),
   );
 
   const formattingProvider = new BufFormattingProvider({
-    writeLog: (level, component, message, root) => output.write(level, component, message, root)
+    writeLog: (level, component, message, root) => output.write(level, component, message, root),
   });
 
   context.subscriptions.push(
     vscode.languages.registerDocumentFormattingEditProvider({ language: "proto3", scheme: "file" }, formattingProvider),
-    vscode.languages.registerDocumentRangeFormattingEditProvider({ language: "proto3", scheme: "file" }, formattingProvider)
+    vscode.languages.registerDocumentRangeFormattingEditProvider(
+      { language: "proto3", scheme: "file" },
+      formattingProvider,
+    ),
   );
 
   context.subscriptions.push(
@@ -73,9 +72,9 @@ export function activate(context: vscode.ExtensionContext): void {
       { language: "proto3", scheme: "file" },
       new BufLintCodeActionProvider(),
       {
-        providedCodeActionKinds: [vscode.CodeActionKind.QuickFix]
-      }
-    )
+        providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
+      },
+    ),
   );
 
   context.subscriptions.push(
@@ -83,7 +82,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (editor && isBufOrProtoDocument(editor.document)) {
         void manager.ensureForDocument(editor.document);
       }
-    })
+    }),
   );
 
   context.subscriptions.push(
@@ -91,13 +90,13 @@ export function activate(context: vscode.ExtensionContext): void {
       if (isBufOrProtoDocument(document)) {
         void manager.ensureForDocument(document);
       }
-    })
+    }),
   );
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       statusBar.update();
-    })
+    }),
   );
 
   context.subscriptions.push(
@@ -107,7 +106,7 @@ export function activate(context: vscode.ExtensionContext): void {
         void manager.restartForResource(activeDoc?.uri, "configuration changed");
         statusBar.update();
       }
-    })
+    }),
   );
 
   if ("onDidGrantWorkspaceTrust" in vscode.workspace) {
@@ -119,7 +118,7 @@ export function activate(context: vscode.ExtensionContext): void {
           }
         }
         statusBar.update();
-      })
+      }),
     );
   }
 

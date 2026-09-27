@@ -25,7 +25,7 @@ describe("rootDiscovery", () => {
 
     await fs.writeFile(path.join(subDir, "buf.yaml"), "version: v1\n");
     const protoFile = path.join(deepDir, "service.proto");
-    await fs.writeFile(protoFile, "syntax = \"proto3\";");
+    await fs.writeFile(protoFile, 'syntax = "proto3";');
 
     const found = await findBufRoot(protoFile, rootDir);
     assert.equal(found, subDir);
@@ -39,7 +39,7 @@ describe("rootDiscovery", () => {
     await fs.writeFile(path.join(rootDir, "buf.yaml"), "version: v1\n");
     await fs.writeFile(path.join(subDir, "buf.yaml"), "version: v1\n");
     const protoFile = path.join(subDir, "service.proto");
-    await fs.writeFile(protoFile, "syntax = \"proto3\";");
+    await fs.writeFile(protoFile, 'syntax = "proto3";');
 
     const found = await findBufRoot(protoFile, rootDir);
     assert.equal(found, subDir);
@@ -54,7 +54,7 @@ describe("rootDiscovery", () => {
     // Write buf.yaml outside the workspace boundary
     await fs.writeFile(path.join(parentDir, "buf.yaml"), "version: v1\n");
     const protoFile = path.join(subDir, "orphan.proto");
-    await fs.writeFile(protoFile, "syntax = \"proto3\";");
+    await fs.writeFile(protoFile, 'syntax = "proto3";');
 
     const found = await findBufRoot(protoFile, rootDir);
     assert.equal(found, rootDir);
@@ -64,7 +64,7 @@ describe("rootDiscovery", () => {
     const subDir = path.join(tempDir, "noboundary", "sub");
     await fs.mkdir(subDir, { recursive: true });
     const protoFile = path.join(subDir, "test.proto");
-    await fs.writeFile(protoFile, "syntax = \"proto3\";");
+    await fs.writeFile(protoFile, 'syntax = "proto3";');
 
     const found = await findBufRoot(protoFile);
     assert.equal(found, undefined);
@@ -74,7 +74,7 @@ describe("rootDiscovery", () => {
     const subDir = path.join(tempDir, "cachetest", "sub");
     await fs.mkdir(subDir, { recursive: true });
     const protoFile = path.join(subDir, "test.proto");
-    await fs.writeFile(protoFile, "syntax = \"proto3\";");
+    await fs.writeFile(protoFile, 'syntax = "proto3";');
 
     // Initial query - no marker
     const first = await findBufRoot(protoFile, tempDir);
@@ -98,7 +98,7 @@ describe("rootDiscovery", () => {
     const nested = path.join(root, "nested");
     await fs.mkdir(nested, { recursive: true });
     const file = path.join(nested, "x.proto");
-    await fs.writeFile(file, "syntax = \"proto3\";");
+    await fs.writeFile(file, 'syntax = "proto3";');
     assert.equal(await findBufRoot(file, root), root);
     await fs.writeFile(path.join(nested, "buf.yaml"), "version: v1\n");
     invalidateRootCache();
@@ -117,7 +117,7 @@ describe("rootDiscovery", () => {
     await fs.mkdir(nested, { recursive: true });
     await fs.writeFile(path.join(tempDir, "buf.yaml"), "version: v1\n");
     const file = path.join(nested, "x.proto");
-    await fs.writeFile(file, "syntax = \"proto3\";");
+    await fs.writeFile(file, 'syntax = "proto3";');
     invalidateRootCache();
     assert.equal(await findBufRoot(file, root), root);
   });

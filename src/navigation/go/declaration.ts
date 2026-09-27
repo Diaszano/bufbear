@@ -81,7 +81,7 @@ const RPC = /^\s*rpc\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/u;
 
 function getCurrentService(
   scopeStack: { kind: "service" | "other"; serviceName?: string }[],
-  pendingService?: string
+  pendingService?: string,
 ): string | undefined {
   for (let s = scopeStack.length - 1; s >= 0; s--) {
     const item = scopeStack[s];
@@ -92,11 +92,7 @@ function getCurrentService(
   return pendingService;
 }
 
-export function findDeclarationAt(
-  text: string,
-  line: number,
-  character: number
-): ProtoDeclaration | undefined {
+export function findDeclarationAt(text: string, line: number, character: number): ProtoDeclaration | undefined {
   if (line < 0 || character < 0) {
     return undefined;
   }
@@ -118,13 +114,15 @@ export function findDeclarationAt(
       continue;
     }
 
-    let declOnLine: {
-      kind: ProtoDeclarationKind;
-      name: string;
-      startCharacter: number;
-      endCharacter: number;
-      parentService?: string;
-    } | undefined;
+    let declOnLine:
+      | {
+          kind: ProtoDeclarationKind;
+          name: string;
+          startCharacter: number;
+          endCharacter: number;
+          parentService?: string;
+        }
+      | undefined;
 
     const topMatch = TOP_LEVEL.exec(lineText);
     if (topMatch) {
@@ -163,7 +161,7 @@ export function findDeclarationAt(
           line: i,
           startCharacter: declOnLine.startCharacter,
           endCharacter: declOnLine.endCharacter,
-          ...(declOnLine.parentService ? { parentService: declOnLine.parentService } : {})
+          ...(declOnLine.parentService ? { parentService: declOnLine.parentService } : {}),
         };
       }
     }

@@ -8,10 +8,7 @@ export function invalidateRootCache(): void {
   rootCache.clear();
 }
 
-export async function findBufRoot(
-  filePath: string,
-  workspaceBoundary?: string
-): Promise<string | undefined> {
+export async function findBufRoot(filePath: string, workspaceBoundary?: string): Promise<string | undefined> {
   const resolvedPath = path.resolve(filePath);
   const resolvedBoundary = workspaceBoundary ? path.resolve(workspaceBoundary) : undefined;
 
@@ -40,7 +37,7 @@ export async function findBufRoot(
     const markerPath = path.join(curr, "buf.yaml");
     const hasMarker = await fs.access(markerPath).then(
       () => true,
-      () => false
+      () => false,
     );
 
     if (hasMarker) {

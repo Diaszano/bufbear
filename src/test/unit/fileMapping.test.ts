@@ -14,7 +14,7 @@ function declaration(kind: ProtoDeclaration["kind"], name: string): ProtoDeclara
     line: 0,
     startCharacter: 0,
     endCharacter: name.length,
-    ...(kind === "rpc" ? { parentService: "BookService" } : {})
+    ...(kind === "rpc" ? { parentService: "BookService" } : {}),
   };
 }
 
@@ -25,13 +25,10 @@ describe("mapToGeneratedGo", () => {
       moduleRoot,
       protoFile,
       generatedRoot: "gen/proto-go",
-      declaration: declaration("message", "Book")
+      declaration: declaration("message", "Book"),
     });
     assert(target);
-    assert.equal(
-      target.filePath,
-      path.join(moduleRoot, "gen", "proto-go", "api", "book", "v1", "book.pb.go")
-    );
+    assert.equal(target.filePath, path.join(moduleRoot, "gen", "proto-go", "api", "book", "v1", "book.pb.go"));
     assert.equal(target.symbolName, "Book");
     assert.equal(target.kind, "message");
   });
@@ -42,7 +39,7 @@ describe("mapToGeneratedGo", () => {
       moduleRoot,
       protoFile,
       generatedRoot: "gen/proto-go",
-      declaration: declaration("enum", "BookState")
+      declaration: declaration("enum", "BookState"),
     });
     assert(target);
     assert.match(target.filePath, /book\.pb\.go$/u);
@@ -57,7 +54,7 @@ describe("mapToGeneratedGo", () => {
         moduleRoot,
         protoFile,
         generatedRoot: "gen/proto-go",
-        declaration: declaration(kind, kind === "service" ? "BookService" : "CreateBook")
+        declaration: declaration(kind, kind === "service" ? "BookService" : "CreateBook"),
       });
       assert(target);
       assert.match(target.filePath, /book_grpc\.pb\.go$/u);
@@ -74,7 +71,7 @@ describe("mapToGeneratedGo", () => {
       moduleRoot,
       protoFile,
       generatedRoot: "../../outside",
-      declaration: declaration("message", "Book")
+      declaration: declaration("message", "Book"),
     });
     assert.equal(target, undefined);
   });
@@ -85,7 +82,7 @@ describe("mapToGeneratedGo", () => {
       moduleRoot,
       protoFile: path.resolve("/other/book.proto"),
       generatedRoot: "gen/proto-go",
-      declaration: declaration("message", "Book")
+      declaration: declaration("message", "Book"),
     });
     assert.equal(target, undefined);
   });
@@ -96,7 +93,7 @@ describe("mapToGeneratedGo", () => {
       moduleRoot: path.resolve("/outside/proto"),
       protoFile: path.resolve("/outside/proto/api/book.proto"),
       generatedRoot: "gen/proto-go",
-      declaration: declaration("message", "Book")
+      declaration: declaration("message", "Book"),
     });
     assert.equal(target, undefined);
   });
@@ -107,7 +104,7 @@ describe("mapToGeneratedGo", () => {
       moduleRoot,
       protoFile: path.join(moduleRoot, "api", "book", "v1", "book.txt"),
       generatedRoot: "gen/proto-go",
-      declaration: declaration("message", "Book")
+      declaration: declaration("message", "Book"),
     });
     assert.equal(target, undefined);
   });

@@ -24,7 +24,7 @@ describe("Navigation Performance & Cancellation", () => {
     assert.equal(decl.name, "TargetMessage");
     assert.ok(
       durationMs < 100,
-      `10,000-line proto declaration parsing took ${durationMs.toFixed(2)}ms (budget: < 100ms)`
+      `10,000-line proto declaration parsing took ${durationMs.toFixed(2)}ms (budget: < 100ms)`,
     );
   });
 
@@ -51,7 +51,7 @@ describe("Navigation Performance & Cancellation", () => {
         await Promise.resolve();
         readCount++;
         return goContent;
-      }
+      },
     };
 
     const service = new GoNavigationService({ fileSystem: mockFs });
@@ -65,9 +65,9 @@ describe("Navigation Performance & Cancellation", () => {
         name: "TargetMessage",
         line: 9998,
         startCharacter: 8,
-        endCharacter: 21
+        endCharacter: 21,
       },
-      isCancelled: () => false
+      isCancelled: () => false,
     };
 
     // First uncached lookup
@@ -80,7 +80,7 @@ describe("Navigation Performance & Cancellation", () => {
     assert.equal(readCount, 1);
     assert.ok(
       firstDurationMs < 250,
-      `Uncached 50,000-line Go indexing took ${firstDurationMs.toFixed(2)}ms (budget: < 250ms)`
+      `Uncached 50,000-line Go indexing took ${firstDurationMs.toFixed(2)}ms (budget: < 250ms)`,
     );
 
     // 1,000 repeated cached lookups
@@ -105,10 +105,7 @@ describe("Navigation Performance & Cancellation", () => {
     }
 
     assert.equal(readCount, 1, "Cached lookups must not re-read from filesystem");
-    assert.ok(
-      cachedDurationMs < 50,
-      `1,000 cached lookups took ${cachedDurationMs.toFixed(2)}ms (budget: < 50ms)`
-    );
+    assert.ok(cachedDurationMs < 50, `1,000 cached lookups took ${cachedDurationMs.toFixed(2)}ms (budget: < 50ms)`);
   });
 
   it("handles cancellation stress after 128, 256, and 512 scanned lines without committing cache", async () => {
@@ -130,7 +127,7 @@ describe("Navigation Performance & Cancellation", () => {
         await Promise.resolve();
         readCount++;
         return goContent;
-      }
+      },
     };
 
     const targetDeclaration = {
@@ -138,14 +135,14 @@ describe("Navigation Performance & Cancellation", () => {
       name: "StressMessage",
       line: 1999,
       startCharacter: 8,
-      endCharacter: 21
+      endCharacter: 21,
     };
 
     // Check cancellation after 128, 256, 512 scanned lines in goIndex (checked every 128 lines: i=0, 128, 256, 384, 512)
     const checkThresholds = [
       2, // Cancel at 2nd check (line index 128)
       3, // Cancel at 3rd check (line index 256)
-      5  // Cancel at 5th check (line index 512)
+      5, // Cancel at 5th check (line index 512)
     ];
 
     for (const cancelAtCheck of checkThresholds) {
@@ -161,7 +158,7 @@ describe("Navigation Performance & Cancellation", () => {
         isCancelled: () => {
           checks++;
           return checks >= cancelAtCheck;
-        }
+        },
       };
 
       const result = await service.find(request);
@@ -190,7 +187,7 @@ describe("Navigation Performance & Cancellation", () => {
     const target = {
       filePath: "/ws/gen/stress.pb.go",
       symbolName: "StressMessage",
-      kind: "message" as const
+      kind: "message" as const,
     };
 
     // Test cancelling on checks 2 (line 128), 3 (line 256), 5 (line 512)

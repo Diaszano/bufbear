@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import * as path from "node:path";
 import { runProcess as defaultRunProcess } from "../platform/runProcess.js";
 
 export interface FormatInput {
@@ -8,19 +11,21 @@ export interface FormatInput {
   runProcess?: typeof defaultRunProcess;
 }
 
-export type FormatResult =
-  | { success: true; formattedText: string }
-  | { success: false; error: string };
+export type FormatResult = { success: true; formattedText: string } | { success: false; error: string };
 
 export async function formatProtoText(input: FormatInput): Promise<FormatResult> {
   const runner = input.runProcess ?? defaultRunProcess;
   const timeoutMs = input.timeoutMs ?? 5000;
+  let temporaryDirectory: string | undefined;
 
   try {
-    const res = await runner(input.bufPath, ["format", "-"], {
+    temporaryDirectory = await mkdtemp(path.join(tmpdir(), "bufbear-format-"));
+    const temporaryProto = path.join(temporaryDirectory, "input.proto");
+    await writeFile(temporaryProto, input.text, "utf8");
+
+    const res = await runner(input.bufPath, ["format", temporaryProto], {
       cwd: input.cwd,
-      stdin: input.text,
-      timeoutMs
+      timeoutMs,
     });
 
     if (res.timedOut) {
@@ -36,5 +41,9 @@ export async function formatProtoText(input: FormatInput): Promise<FormatResult>
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     return { success: false, error: errorMsg };
+  } finally {
+    if (temporaryDirectory) {
+      await rm(temporaryDirectory, { recursive: true, force: true });
+    }
   }
 }

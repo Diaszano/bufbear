@@ -49,14 +49,14 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       }
       dependencies.output.write("info", "Commands", "Manual restart requested", resource?.fsPath);
       await dependencies.clientManager.restartForResource(resource, "manual restart");
-    })
+    }),
   );
 
   // 2. bufBear.showOutput
   disposables.push(
     vsc.commands.registerCommand("bufBear.showOutput", () => {
       dependencies.output.show();
-    })
+    }),
   );
 
   // 3. bufBear.checkHealth
@@ -127,20 +127,20 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
         `- Buf executable: ${config.bufPath}`,
         `- Buf version: ${bufVersion}`,
         `- LSP support: ${lspSupport}`,
-        `- Client state: ${clientState}`
+        `- Client state: ${clientState}`,
       ];
 
       const reportText = reportLines.join("\n");
       dependencies.output.write("info", "Health", reportText);
       dependencies.output.show();
-    })
+    }),
   );
 
   // 4. bufBear.openSettings
   disposables.push(
     vsc.commands.registerCommand("bufBear.openSettings", async () => {
       await vsc.commands.executeCommand("workbench.action.openSettings", "@ext:diaszano.bufbear");
-    })
+    }),
   );
 
   // 5. bufBear.goToGeneratedImplementation
@@ -157,17 +157,12 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       const navigation = dependencies.navigation ?? new GoNavigationService();
       const pos = editor.selection.active;
 
-      const res = await resolveFn(
-        editor.document,
-        pos,
-        undefined,
-        {
-          navigation,
-          readConfig: dependencies.readConfig,
-          findBufRoot: dependencies.findRoot,
-          isTrusted: () => vsc.workspace.isTrusted
-        }
-      );
+      const res = await resolveFn(editor.document, pos, undefined, {
+        navigation,
+        readConfig: dependencies.readConfig,
+        findBufRoot: dependencies.findRoot,
+        isTrusted: () => vsc.workspace.isTrusted,
+      });
 
       if (res.status === "no_declaration") {
         await vsc.window.showInformationMessage("Place the cursor on a message, enum, service, or rpc declaration.");
@@ -181,7 +176,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
 
       if (res.status !== "success") {
         await vsc.window.showInformationMessage(
-          "Generated Go file or symbol was not found. Run code generation or check bufBear.go.genRoot."
+          "Generated Go file or symbol was not found. Run code generation or check bufBear.go.genRoot.",
         );
         return;
       }
@@ -193,9 +188,9 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       const targetDoc = await vsc.workspace.openTextDocument(targetUri);
       await vsc.window.showTextDocument(targetDoc, {
         selection: targetRange,
-        preview: true
+        preview: true,
       });
-    })
+    }),
   );
 
   // 6. bufBear.showQuickPick
@@ -205,23 +200,23 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
         {
           label: "$(heart) Check Health",
           description: "Run health check on active Buf environment",
-          command: "bufBear.checkHealth"
+          command: "bufBear.checkHealth",
         },
         {
           label: "$(restart) Restart Language Server",
           description: "Restart Buf Language Server for active workspace",
-          command: "bufBear.restartServer"
+          command: "bufBear.restartServer",
         },
         {
           label: "$(output) Show Output Channel",
           description: "Open BufBear logs channel",
-          command: "bufBear.showOutput"
+          command: "bufBear.showOutput",
         },
         {
           label: "$(gear) Open Settings",
           description: "Open BufBear configuration",
-          command: "bufBear.openSettings"
-        }
+          command: "bufBear.openSettings",
+        },
       ];
 
       const selected = (await vsc.window.showQuickPick(items as unknown as vscode.QuickPickItem[])) as
@@ -230,7 +225,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       if (selected?.command) {
         await vsc.commands.executeCommand(selected.command);
       }
-    })
+    }),
   );
 
   // 7. bufBear.formatDocument
@@ -250,7 +245,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       const config = readCfg(editor.document.uri);
       if (!config.formattingEnabled) {
         await vsc.window.showInformationMessage(
-          'BufBear document formatting is disabled. Set "bufBear.formatting.enabled": true in Settings to re-enable it.'
+          'BufBear document formatting is disabled. Set "bufBear.formatting.enabled": true in Settings to re-enable it.',
         );
         return;
       }
@@ -266,7 +261,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
       const result = await formatFn({
         text: originalText,
         bufPath: config.bufPath,
-        cwd
+        cwd,
       });
 
       if (!result.success) {
@@ -283,7 +278,7 @@ export function registerCommands(dependencies: CommandDependencies): vscode.Disp
 
       const fullRange = new vsc.Range(new vsc.Position(0, 0), lastLine.range.end);
       await editor.edit((builder) => builder.replace(fullRange, result.formattedText));
-    })
+    }),
   );
 
   return vsc.Disposable.from(...disposables);

@@ -44,7 +44,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const results = await vscode.commands.executeCommand<vscode.Location[]>(
       "vscode.executeImplementationProvider",
       protoUri,
-      pos
+      pos,
     );
 
     assert.strictEqual(results.length, 1, "Expected exactly 1 implementation result for message");
@@ -54,7 +54,10 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
 
     const targetDoc = await vscode.workspace.openTextDocument(loc.uri);
     const lineText = targetDoc.lineAt(loc.range.start.line).text;
-    assert.ok(lineText.includes("type Book struct"), `Expected target line to contain 'type Book struct', got: ${lineText}`);
+    assert.ok(
+      lineText.includes("type Book struct"),
+      `Expected target line to contain 'type Book struct', got: ${lineText}`,
+    );
   });
 
   it("navigates from enum declaration to generated Go type/const", async () => {
@@ -62,7 +65,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const results = await vscode.commands.executeCommand<vscode.Location[]>(
       "vscode.executeImplementationProvider",
       protoUri,
-      pos
+      pos,
     );
 
     assert.strictEqual(results.length, 1, "Expected exactly 1 implementation result for enum");
@@ -72,7 +75,10 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
 
     const targetDoc = await vscode.workspace.openTextDocument(loc.uri);
     const lineText = targetDoc.lineAt(loc.range.start.line).text;
-    assert.ok(lineText.includes("type BookState int32"), `Expected target line to contain 'type BookState int32', got: ${lineText}`);
+    assert.ok(
+      lineText.includes("type BookState int32"),
+      `Expected target line to contain 'type BookState int32', got: ${lineText}`,
+    );
   });
 
   it("navigates from service declaration to generated gRPC server interface", async () => {
@@ -80,7 +86,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const results = await vscode.commands.executeCommand<vscode.Location[]>(
       "vscode.executeImplementationProvider",
       protoUri,
-      pos
+      pos,
     );
 
     assert.strictEqual(results.length, 1, "Expected exactly 1 implementation result for service");
@@ -92,7 +98,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const lineText = targetDoc.lineAt(loc.range.start.line).text;
     assert.ok(
       lineText.includes("type BookServiceServer interface"),
-      `Expected target line to contain 'type BookServiceServer interface', got: ${lineText}`
+      `Expected target line to contain 'type BookServiceServer interface', got: ${lineText}`,
     );
   });
 
@@ -101,7 +107,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const results = await vscode.commands.executeCommand<vscode.Location[]>(
       "vscode.executeImplementationProvider",
       protoUri,
-      pos
+      pos,
     );
 
     assert.strictEqual(results.length, 1, "Expected exactly 1 implementation result for rpc");
@@ -119,7 +125,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const results = await vscode.commands.executeCommand<vscode.Location[]>(
       "vscode.executeImplementationProvider",
       protoUri,
-      pos
+      pos,
     );
 
     assert.strictEqual(results.length, 0, "Expected no implementation results when cursor is on a field");
@@ -133,7 +139,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const results = await vscode.commands.executeCommand<vscode.Location[]>(
       "vscode.executeImplementationProvider",
       protoUri,
-      pos
+      pos,
     );
 
     assert.strictEqual(results.length, 0, "Expected no implementation results when go.enabled = false");
@@ -147,7 +153,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
     const results = await vscode.commands.executeCommand<vscode.Location[]>(
       "vscode.executeImplementationProvider",
       protoUri,
-      pos
+      pos,
     );
 
     assert.strictEqual(results.length, 0, "Expected no implementation results when go.genRoot is invalid");
@@ -162,7 +168,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
       const results1 = await vscode.commands.executeCommand<vscode.Location[]>(
         "vscode.executeImplementationProvider",
         protoUri,
-        pos
+        pos,
       );
 
       assert.strictEqual(results1.length, 1);
@@ -170,7 +176,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
       assert.ok(loc1);
       const initialLine = loc1.range.start.line;
 
-      const modifiedContent = "// Header comment\n// Another comment line\n" + originalContent;
+      const modifiedContent = `// Header comment\n// Another comment line\n${originalContent}`;
       await fs.writeFile(pbGoPath, modifiedContent, "utf8");
 
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -178,7 +184,7 @@ describe("Generated Go Implementation Navigation Integration Tests", () => {
       const results2 = await vscode.commands.executeCommand<vscode.Location[]>(
         "vscode.executeImplementationProvider",
         protoUri,
-        pos
+        pos,
       );
 
       assert.strictEqual(results2.length, 1);

@@ -6,7 +6,7 @@ import {
   RevealOutputChannelOn,
   Trace,
   type LanguageClientOptions,
-  type ServerOptions
+  type ServerOptions,
 } from "vscode-languageclient/node";
 import type { Output } from "../platform/output.js";
 
@@ -23,7 +23,7 @@ export function createLanguageClient(input: ClientFactoryInput): LanguageClient 
   const serverOptions: ServerOptions = () => {
     const child = cp.spawn(input.executable, ["lsp", "serve"], {
       cwd: input.root.fsPath,
-      shell: false
+      shell: false,
     });
 
     // Prevent an unhandled 'error' event (e.g. ENOENT when the configured
@@ -34,7 +34,7 @@ export function createLanguageClient(input: ClientFactoryInput): LanguageClient 
         "error",
         "BufBear LSP",
         `Failed to spawn Buf LSP server (${input.executable}): ${err.message}`,
-        input.root.fsPath
+        input.root.fsPath,
       );
     });
 
@@ -47,7 +47,7 @@ export function createLanguageClient(input: ClientFactoryInput): LanguageClient 
 
     return Promise.resolve({
       writer: child.stdin,
-      reader: child.stdout
+      reader: child.stdout,
     });
   };
 
@@ -56,23 +56,23 @@ export function createLanguageClient(input: ClientFactoryInput): LanguageClient 
     workspaceFolder: {
       uri: input.root,
       name: rootName,
-      index: 0
+      index: 0,
     },
     synchronize: {
       fileEvents: vscode.workspace.createFileSystemWatcher(
-        new vscode.RelativePattern(input.root, "**/{*.proto,buf.yaml,buf.gen.yaml,buf.lock}")
-      )
+        new vscode.RelativePattern(input.root, "**/{*.proto,buf.yaml,buf.gen.yaml,buf.lock}"),
+      ),
     },
     revealOutputChannelOn: RevealOutputChannelOn.Never,
     outputChannel: vscode.window.createOutputChannel(`BufBear LSP — ${rootName}`, { log: true }),
-    traceOutputChannel: vscode.window.createOutputChannel(`BufBear LSP Trace — ${rootName}`, { log: true })
+    traceOutputChannel: vscode.window.createOutputChannel(`BufBear LSP Trace — ${rootName}`, { log: true }),
   };
 
   const client = new LanguageClient(
     `bufBear:${input.root.fsPath}`,
     `BufBear LSP (${rootName})`,
     serverOptions,
-    clientOptions
+    clientOptions,
   );
 
   void client.setTrace(Trace.fromString(input.trace));

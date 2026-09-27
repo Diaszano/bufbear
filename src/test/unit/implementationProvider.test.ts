@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type * as vscode from "vscode";
 import {
   GeneratedGoImplementationProvider,
-  resolveGoImplementation
+  resolveGoImplementation,
 } from "../../navigation/go/implementationProvider.js";
 import { GoNavigationService } from "../../navigation/go/navigationService.js";
 import type { BufBearConfig } from "../../config/types.js";
@@ -25,7 +25,7 @@ function makeDoc(content: string, fsPath = "/workspace/proto/user.proto"): vscod
     getText: () => content,
     uri: { fsPath } as vscode.Uri,
     fileName: fsPath,
-    languageId: "proto3"
+    languageId: "proto3",
   } as unknown as vscode.TextDocument;
 }
 
@@ -35,17 +35,23 @@ function makeToken(cancelled = false): vscode.CancellationToken {
     onCancellationRequested: () => ({
       dispose: () => {
         // Mock dispose
-      }
-    })
+      },
+    }),
   };
 }
 
 class MockPosition {
-  public constructor(public line: number, public character: number) {}
+  public constructor(
+    public line: number,
+    public character: number,
+  ) {}
 }
 
 class MockRange {
-  public constructor(public start: MockPosition, public end: MockPosition) {}
+  public constructor(
+    public start: MockPosition,
+    public end: MockPosition,
+  ) {}
 }
 
 class MockLocation {
@@ -65,8 +71,8 @@ const mockVscode = {
   Position: MockPosition as unknown as typeof vscode.Position,
   Location: MockLocation as unknown as typeof vscode.Location,
   Uri: {
-    file: (pathStr: string): vscode.Uri => ({ fsPath: pathStr } as vscode.Uri)
-  }
+    file: (pathStr: string): vscode.Uri => ({ fsPath: pathStr }) as vscode.Uri,
+  },
 } as unknown as typeof vscode;
 
 describe("GeneratedGoImplementationProvider", () => {
@@ -76,7 +82,7 @@ describe("GeneratedGoImplementationProvider", () => {
     const provider = new GeneratedGoImplementationProvider({
       navigation,
       output: fakeOutput,
-      isTrusted: () => false
+      isTrusted: () => false,
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -92,7 +98,7 @@ describe("GeneratedGoImplementationProvider", () => {
     const provider = new GeneratedGoImplementationProvider({
       navigation,
       output: fakeOutput,
-      isTrusted: () => true
+      isTrusted: () => true,
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -118,8 +124,8 @@ describe("GeneratedGoImplementationProvider", () => {
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
         conflictWarningEnabled: true,
-        formattingEnabled: true
-      })
+        formattingEnabled: true,
+      }),
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -135,10 +141,10 @@ describe("GeneratedGoImplementationProvider", () => {
       navigation,
       output: fakeOutput,
       isTrusted: () => true,
-      findDeclarationAt: () => undefined
+      findDeclarationAt: () => undefined,
     });
 
-    const doc = makeDoc("syntax = \"proto3\";");
+    const doc = makeDoc('syntax = "proto3";');
     const pos = { line: 0, character: 2 } as vscode.Position;
     const result = await provider.provideImplementation(doc, pos, makeToken());
 
@@ -152,8 +158,14 @@ describe("GeneratedGoImplementationProvider", () => {
       navigation,
       output: fakeOutput,
       isTrusted: () => true,
-      findDeclarationAt: () => ({ kind: "message", name: "UserResponse", line: 0, startCharacter: 8, endCharacter: 20 }),
-      getWorkspaceFolder: () => undefined
+      findDeclarationAt: () => ({
+        kind: "message",
+        name: "UserResponse",
+        line: 0,
+        startCharacter: 8,
+        endCharacter: 20,
+      }),
+      getWorkspaceFolder: () => undefined,
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -170,9 +182,15 @@ describe("GeneratedGoImplementationProvider", () => {
       navigation,
       output: fakeOutput,
       isTrusted: () => true,
-      findDeclarationAt: () => ({ kind: "message", name: "UserResponse", line: 0, startCharacter: 8, endCharacter: 20 }),
+      findDeclarationAt: () => ({
+        kind: "message",
+        name: "UserResponse",
+        line: 0,
+        startCharacter: 8,
+        endCharacter: 20,
+      }),
       getWorkspaceFolder: () => ({ uri: { fsPath: "/workspace" } as vscode.Uri, name: "workspace", index: 0 }),
-      findBufRoot: async () => Promise.resolve(undefined)
+      findBufRoot: async () => Promise.resolve(undefined),
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -185,10 +203,11 @@ describe("GeneratedGoImplementationProvider", () => {
   it("returns Location when navigation service finds implementation", async () => {
     const fakeOutput = new FakeOutput();
     const dummyNav = {
-      find: async () => Promise.resolve({
-        filePath: "/workspace/gen/proto-go/user.pb.go",
-        location: { line: 42, startCharacter: 5, endCharacter: 17 }
-      })
+      find: async () =>
+        Promise.resolve({
+          filePath: "/workspace/gen/proto-go/user.pb.go",
+          location: { line: 42, startCharacter: 5, endCharacter: 17 },
+        }),
     } as unknown as GoNavigationService;
 
     const provider = new GeneratedGoImplementationProvider({
@@ -205,17 +224,17 @@ describe("GeneratedGoImplementationProvider", () => {
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
         conflictWarningEnabled: true,
-        formattingEnabled: true
+        formattingEnabled: true,
       }),
       findDeclarationAt: (): ProtoDeclaration => ({
         kind: "message",
         name: "UserResponse",
         line: 0,
         startCharacter: 8,
-        endCharacter: 20
+        endCharacter: 20,
       }),
       getWorkspaceFolder: () => ({ uri: { fsPath: "/workspace" } as vscode.Uri, name: "workspace", index: 0 }),
-      findBufRoot: async () => Promise.resolve("/workspace")
+      findBufRoot: async () => Promise.resolve("/workspace"),
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -231,10 +250,11 @@ describe("GeneratedGoImplementationProvider", () => {
   it("returns undefined when vscode environment is not available", async () => {
     const fakeOutput = new FakeOutput();
     const dummyNav = {
-      find: async () => Promise.resolve({
-        filePath: "/workspace/gen/proto-go/user.pb.go",
-        location: { line: 42, startCharacter: 5, endCharacter: 17 }
-      })
+      find: async () =>
+        Promise.resolve({
+          filePath: "/workspace/gen/proto-go/user.pb.go",
+          location: { line: 42, startCharacter: 5, endCharacter: 17 },
+        }),
     } as unknown as GoNavigationService;
 
     const provider = new GeneratedGoImplementationProvider({
@@ -250,17 +270,17 @@ describe("GeneratedGoImplementationProvider", () => {
         goGenRoot: "gen/proto-go",
         goSourceRelative: true,
         conflictWarningEnabled: true,
-        formattingEnabled: true
+        formattingEnabled: true,
       }),
       findDeclarationAt: (): ProtoDeclaration => ({
         kind: "message",
         name: "UserResponse",
         line: 0,
         startCharacter: 8,
-        endCharacter: 20
+        endCharacter: 20,
       }),
       getWorkspaceFolder: () => ({ uri: { fsPath: "/workspace" } as vscode.Uri, name: "workspace", index: 0 }),
-      findBufRoot: async () => Promise.resolve("/workspace")
+      findBufRoot: async () => Promise.resolve("/workspace"),
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -277,7 +297,7 @@ describe("GeneratedGoImplementationProvider", () => {
       output: fakeOutput,
       isTrusted: () => {
         throw new Error("unexpected disk failure");
-      }
+      },
     });
 
     const doc = makeDoc("message UserResponse {}");
@@ -294,13 +314,13 @@ describe("GeneratedGoImplementationProvider", () => {
 describe("resolveGoImplementation", () => {
   it("returns no_declaration status when declaration is missing", async () => {
     const navigation = new GoNavigationService();
-    const doc = makeDoc("syntax = \"proto3\";");
+    const doc = makeDoc('syntax = "proto3";');
     const pos = { line: 0, character: 0 } as vscode.Position;
 
     const res = await resolveGoImplementation(doc, pos, undefined, {
       navigation,
       isTrusted: () => true,
-      findDeclarationAt: () => undefined
+      findDeclarationAt: () => undefined,
     });
 
     assert.strictEqual(res.status, "no_declaration");
@@ -314,9 +334,15 @@ describe("resolveGoImplementation", () => {
     const res = await resolveGoImplementation(doc, pos, undefined, {
       navigation,
       isTrusted: () => true,
-      findDeclarationAt: () => ({ kind: "message", name: "UserResponse", line: 0, startCharacter: 8, endCharacter: 20 }),
+      findDeclarationAt: () => ({
+        kind: "message",
+        name: "UserResponse",
+        line: 0,
+        startCharacter: 8,
+        endCharacter: 20,
+      }),
       getWorkspaceFolder: () => ({ uri: { fsPath: "/workspace" } as vscode.Uri, name: "workspace", index: 0 }),
-      findBufRoot: async () => Promise.resolve(undefined)
+      findBufRoot: async () => Promise.resolve(undefined),
     });
 
     assert.strictEqual(res.status, "no_buf_root");

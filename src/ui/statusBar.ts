@@ -5,12 +5,7 @@ import type { RootServerStatus, ServerState } from "../lsp/serverState.js";
 import { readConfig } from "../config/config.js";
 import { getVscode } from "../platform/vscodeRef.js";
 
-const BUF_CONFIG_FILES = new Set([
-  "buf.yaml",
-  "buf.gen.yaml",
-  "buf.work.yaml",
-  "buf.lock"
-]);
+const BUF_CONFIG_FILES = new Set(["buf.yaml", "buf.gen.yaml", "buf.work.yaml", "buf.lock"]);
 
 export function isBufOrProtoDocument(document?: vscode.TextDocument): boolean {
   if (!document) {
@@ -47,7 +42,6 @@ function describeServerState(state: ServerState): StatePresentation {
       return { icon: "$(warning)", label: "Degraded" };
     case "error":
       return { icon: "$(error)", label: "Error" };
-    case "stopped":
     default:
       return { icon: "$(circle-slash)", label: "Disabled / Stopped" };
   }
@@ -56,9 +50,7 @@ function describeServerState(state: ServerState): StatePresentation {
 function buildRootsSection(statuses: readonly RootServerStatus[]): string {
   const lines = statuses.map((status) => {
     const { label } = describeServerState(status.state);
-    return status.detail
-      ? `• ${status.root} — ${label}: ${status.detail}`
-      : `• ${status.root} — ${label}`;
+    return status.detail ? `• ${status.root} — ${label}: ${status.detail}` : `• ${status.root} — ${label}`;
   });
   return ["", "", "Roots:", ...lines].join("\n");
 }
@@ -130,11 +122,7 @@ export class StatusBar implements vscode.Disposable {
     this.#item.show();
   }
 
-  private render(
-    state: ServerState,
-    detail: string | undefined,
-    statuses: readonly RootServerStatus[]
-  ): void {
+  private render(state: ServerState, detail: string | undefined, statuses: readonly RootServerStatus[]): void {
     const { icon, label } = describeServerState(state);
 
     this.#item.text = `${icon} BufBear`;

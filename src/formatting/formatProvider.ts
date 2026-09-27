@@ -27,9 +27,7 @@ export class BufFormattingProvider
     this.#deps = deps;
   }
 
-  public async provideDocumentFormattingEdits(
-    document: vscode.TextDocument
-  ): Promise<vscode.TextEdit[]> {
+  public async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
     const outcome = await this.runFormattingPipeline(document);
     if (!outcome || outcome.formattedText === document.getText()) {
       return [];
@@ -51,7 +49,7 @@ export class BufFormattingProvider
     document: vscode.TextDocument,
     range: vscode.Range,
     _options: vscode.FormattingOptions,
-    token?: vscode.CancellationToken
+    token?: vscode.CancellationToken,
   ): Promise<vscode.TextEdit[]> {
     const outcome = await this.runFormattingPipeline(document, token);
     if (!outcome || token?.isCancellationRequested) {
@@ -85,7 +83,7 @@ export class BufFormattingProvider
 
   private async runFormattingPipeline(
     document: vscode.TextDocument,
-    token?: vscode.CancellationToken
+    token?: vscode.CancellationToken,
   ): Promise<FormattingOutcome | undefined> {
     if (token?.isCancellationRequested) {
       return undefined;
@@ -122,7 +120,7 @@ export class BufFormattingProvider
     const result = await formatter({
       text: document.getText(),
       bufPath: config.bufPath,
-      cwd
+      cwd,
     });
 
     if (token?.isCancellationRequested) {
@@ -137,11 +135,7 @@ export class BufFormattingProvider
     return { formattedText: result.formattedText };
   }
 
-  private toWholeLineRange(
-    document: vscode.TextDocument,
-    lineEdit: LineEdit,
-    vsc: typeof vscode
-  ): vscode.Range {
+  private toWholeLineRange(document: vscode.TextDocument, lineEdit: LineEdit, vsc: typeof vscode): vscode.Range {
     const lineCount = document.lineCount;
     const startIndex = Math.min(Math.max(0, lineEdit.startLine), lineCount - 1);
     const endExclusive = Math.min(Math.max(lineEdit.endLineExclusive, startIndex + 1), lineCount);

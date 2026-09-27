@@ -9,13 +9,10 @@ export interface BufProbe {
 type Runner = (
   executable: string,
   args: readonly string[],
-  options?: { timeoutMs?: number }
+  options?: { timeoutMs?: number },
 ) => Promise<RunProcessResult>;
 
-export async function probeBuf(
-  executable: string,
-  runner: Runner = runProcess
-): Promise<BufProbe> {
+export async function probeBuf(executable: string, runner: Runner = runProcess): Promise<BufProbe> {
   if (executable.length === 0 || /[\0\r\n]/u.test(executable)) {
     throw new Error("Buf executable must be a non-empty path or command name");
   }
@@ -30,6 +27,6 @@ export async function probeBuf(
   return {
     executable,
     version: version.stdout.trim(),
-    supportsLsp: lsp.exitCode === 0 && !lsp.timedOut
+    supportsLsp: lsp.exitCode === 0 && !lsp.timedOut,
   };
 }

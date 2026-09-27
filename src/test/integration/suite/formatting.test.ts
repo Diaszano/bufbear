@@ -21,7 +21,7 @@ describe("Protobuf Formatting Integration Tests", () => {
     const edits = await vscode.commands.executeCommand<vscode.TextEdit[] | undefined>(
       "vscode.executeFormatDocumentProvider",
       document.uri,
-      { tabSize: 2, insertSpaces: true }
+      { tabSize: 2, insertSpaces: true },
     );
 
     assert.ok(Array.isArray(edits), "Buf formatting should return edits");

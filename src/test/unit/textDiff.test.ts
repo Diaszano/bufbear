@@ -79,7 +79,7 @@ describe("diffLines", () => {
     assert.deepEqual(edits[0], {
       startLine: 0,
       endLineExclusive: 2,
-      newText: 'syntax = "proto3";\nmessage Foo {'
+      newText: 'syntax = "proto3";\nmessage Foo {',
     });
     assert.deepEqual(applyEdits(original, edits), formatted);
   });

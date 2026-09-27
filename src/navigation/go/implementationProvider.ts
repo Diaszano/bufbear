@@ -34,7 +34,7 @@ export async function resolveGoImplementation(
   document: vscode.TextDocument,
   position: vscode.Position,
   token: vscode.CancellationToken | undefined,
-  deps: ResolutionDependencies
+  deps: ResolutionDependencies,
 ): Promise<GoImplementationResolution> {
   const vsc = deps.vscode ?? getVscode();
   const isTrustedFn = deps.isTrusted ?? (() => vsc?.workspace.isTrusted ?? true);
@@ -49,11 +49,7 @@ export async function resolveGoImplementation(
   }
 
   const findDecl = deps.findDeclarationAt ?? findDeclarationAt;
-  const declaration: ProtoDeclaration | undefined = findDecl(
-    document.getText(),
-    position.line,
-    position.character
-  );
+  const declaration: ProtoDeclaration | undefined = findDecl(document.getText(), position.line, position.character);
   if (!declaration || token?.isCancellationRequested) {
     return { status: token?.isCancellationRequested ? "cancelled" : "no_declaration" };
   }
@@ -76,7 +72,7 @@ export async function resolveGoImplementation(
     protoFile: document.uri.fsPath,
     generatedRoot: config.goGenRoot,
     declaration,
-    isCancelled: () => token?.isCancellationRequested ?? false
+    isCancelled: () => token?.isCancellationRequested ?? false,
   });
 
   if (!result || token?.isCancellationRequested) {
@@ -85,7 +81,7 @@ export async function resolveGoImplementation(
 
   return {
     status: "success",
-    result
+    result,
   };
 }
 
@@ -103,7 +99,7 @@ export class GeneratedGoImplementationProvider implements vscode.ImplementationP
   public async provideImplementation(
     document: vscode.TextDocument,
     position: vscode.Position,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<vscode.Location | undefined> {
     try {
       const resolution = await resolveGoImplementation(document, position, token, this.#dependencies);
@@ -118,7 +114,7 @@ export class GeneratedGoImplementationProvider implements vscode.ImplementationP
 
       return new vsc.Location(
         vsc.Uri.file(resolution.result.filePath),
-        new vsc.Position(resolution.result.location.line, resolution.result.location.startCharacter)
+        new vsc.Position(resolution.result.location.line, resolution.result.location.startCharacter),
       );
     } catch (err) {
       const vsc = this.#dependencies.vscode ?? getVscode();
@@ -127,7 +123,7 @@ export class GeneratedGoImplementationProvider implements vscode.ImplementationP
         "error",
         "GoNavigation",
         `Error providing implementation: ${err instanceof Error ? err.message : String(err)}`,
-        relPath
+        relPath,
       );
       return undefined;
     }

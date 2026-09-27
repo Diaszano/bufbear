@@ -14,7 +14,7 @@ export function readConfig(resource?: vscode.Uri): BufBearConfig {
       goGenRoot: "gen/proto-go",
       goSourceRelative: true,
       conflictWarningEnabled: true,
-      formattingEnabled: true
+      formattingEnabled: true,
     };
   }
   const config = vsc.workspace.getConfiguration("bufBear", resource);
@@ -27,6 +27,6 @@ export function readConfig(resource?: vscode.Uri): BufBearConfig {
     goGenRoot: config.get<string>("go.genRoot", "gen/proto-go"),
     goSourceRelative: config.get<boolean>("go.sourceRelative", true),
     conflictWarningEnabled: config.get<boolean>("conflictWarning.enabled", true),
-    formattingEnabled: config.get<boolean>("formatting.enabled", true)
+    formattingEnabled: config.get<boolean>("formatting.enabled", true),
   };
 }
