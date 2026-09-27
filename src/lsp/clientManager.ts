@@ -215,7 +215,7 @@ export class ClientManager {
     }
 
     const pending = this.#startupPromises.get(rootKey);
-    if (pending) {
+    if (pending !== undefined) {
       try {
         await pending;
       } catch {
@@ -329,7 +329,7 @@ export class ClientManager {
     config: BufBearConfig,
   ): Promise<void> {
     const pending = this.#startupPromises.get(rootKey);
-    if (pending) {
+    if (pending !== undefined) {
       return pending;
     }
 

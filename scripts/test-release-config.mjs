@@ -53,7 +53,7 @@ assert.equal(packageJson.scripts.format, "biome format --write .");
 assert.equal(packageJson.scripts["format:check"], "biome format .");
 assert.equal(packageJson.scripts.lint, "biome lint --error-on-warnings .");
 assert.equal(packageJson.scripts["lint:fix"], "biome lint --write --error-on-warnings .");
-assert.equal(packageJson.devDependencies["@biomejs/biome"], "2.5.13");
+assert.equal(packageJson.devDependencies["@biomejs/biome"], "2.5.14");
 assert.equal(packageJson.devDependencies.jiti, undefined);
 assert.equal(packageJson.devDependencies.eslint, undefined);
 assert.equal(packageJson.devDependencies.prettier, undefined);
