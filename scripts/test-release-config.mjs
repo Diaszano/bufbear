@@ -7,7 +7,7 @@ import { analyzeCommits } from "@semantic-release/commit-analyzer";
 import { load } from "js-yaml";
 
 const ACTIONS = {
-  checkout: "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+  checkout: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
   setupNode: "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
 };
 
@@ -53,7 +53,7 @@ assert.equal(packageJson.scripts.format, "biome format --write .");
 assert.equal(packageJson.scripts["format:check"], "biome format .");
 assert.equal(packageJson.scripts.lint, "biome lint --error-on-warnings .");
 assert.equal(packageJson.scripts["lint:fix"], "biome lint --write --error-on-warnings .");
-assert.equal(packageJson.devDependencies["@biomejs/biome"], "2.5.13");
+assert.equal(packageJson.devDependencies["@biomejs/biome"], "2.5.14");
 assert.equal(packageJson.devDependencies.jiti, undefined);
 assert.equal(packageJson.devDependencies.eslint, undefined);
 assert.equal(packageJson.devDependencies.prettier, undefined);
